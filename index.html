@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookoo Recipe Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', 'Pretendard', sans-serif; 
+            background-color: #09090b; 
+            color: #f8fafc; 
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(63, 63, 70, 0.5);
+        }
+        
+        .graph-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* 온도 인디케이터 그라데이션바 */
+        .temp-gradient {
+            background: linear-gradient(90deg, #3b82f6 0%, #10b981 40%, #f59e0b 70%, #ef4444 100%);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden relative">
+
+    <header class="glass-panel px-6 py-4 flex justify-between items-center shrink-0 sticky top-0 z-40 border-b border-zinc-800">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 text-indigo-400">
+                <span class="text-xl">☁️</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Recipe Cloud</h1>
+                <p class="text-xs text-zinc-400 font-medium">전 세계 바리스타들의 커피 추출 레시피</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="window.location.href='buku-admin.html'" class="text-xs text-zinc-500 hover:text-zinc-300 mr-2 hidden md:block">관리자 패널</button>
+            <button onclick="document.getElementById('shareModal').showModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 active:scale-95">
+                내 기록 공유하기
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <aside class="w-64 glass-panel border-r border-zinc-800 p-5 hidden lg:flex flex-col gap-6 overflow-y-auto">
+            <div>
+                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">추출 도구 (기물)</h3>
+                <div class="flex flex-col gap-2" id="filter-dripper">
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="V60" class="accent-indigo-500"> Hario V60</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Kalita" class="accent-indigo-500"> Kalita Wave</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Aeropress" class="accent-indigo-500"> Aeropress</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Espresso" class="accent-indigo-500"> Espresso</label>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">추출 온도 (물)</h3>
+                <div class="flex flex-col gap-2" id="filter-temp">
+                    <label class="flex items-center gap-2 text-sm text-red-300 hover:text-red-200 cursor-pointer"><input type="checkbox" value="hot90" class="accent-red-500"> 90°C 이상 (매우 뜨거움)</label>
+                    <label class="flex items-center gap-2 text-sm text-orange-300 hover:text-orange-200 cursor-pointer"><input type="checkbox" value="hot80" class="accent-orange-500"> 80°C ~ 89°C (뜨거움)</label>
+                    <label class="flex items-center gap-2 text-sm text-yellow-300 hover:text-yellow-200 cursor-pointer"><input type="checkbox" value="mid70" class="accent-yellow-500"> 70°C ~ 79°C (따뜻함)</label>
+                    <label class="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 cursor-pointer"><input type="checkbox" value="low70" class="accent-emerald-500"> 70°C 미만 (미지근함)</label>
+                    <label class="flex items-center gap-2 text-sm text-blue-300 hover:text-blue-200 cursor-pointer"><input type="checkbox" value="cold" class="accent-blue-500"> 상온 추출 (Cold Brew)</label>
+                </div>
+            </div>
+
+            <button onclick="resetFilters()" class="mt-auto bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700">
+                필터 초기화
+            </button>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-black/40">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white">🔥 커뮤니티 레시피</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="recipe-grid">
+                <!-- Javascript로 데이터 바인딩 됨 -->
+            </div>
+        </main>
+    </div>
+
+    <dialog id="shareModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-lg m-auto overflow-hidden relative z-50">
+        <div class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/50">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                나의 추출 기록 공유하기
+            </h2>
+            <button onclick="document.getElementById('shareModal').close()" class="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-700">
+                ✖
+            </button>
+        </div>
+        
+        <form id="recipe-form" class="p-6 flex flex-col gap-4">
+            <div>
+                <label class="block text-xs font-bold text-zinc-400 mb-1.5">레시피 이름 (프로파일 명)</label>
+                <input type="text" id="f-title" placeholder="예: 단맛을 끌어올리는 케냐 AA" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">기여자 (이름)</label>
+                    <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호</label>
+                    <input type="password" id="f-pw" placeholder="삭제시 필요" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물 (도구)</label>
+                    <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between">
+                        <span>원두량 (g) / 온도(°C)</span>
+                        <span id="temp-indicator" class="text-blue-400 text-[10px]">Cold</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                        <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 온도 컬러 바 -->
+            <div class="w-full h-1.5 rounded-full temp-gradient mb-2 opacity-50"></div>
+
+            <div>
+                <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between items-end">
+                    <span>상세 추출 스텝 (JSON 구조)</span>
+                    <span class="text-[10px] text-zinc-500 font-normal">t:시간(초), w:누적무게(g)</span>
+                </label>
+                <textarea id="f-steps" rows="4" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-indigo-300 font-mono focus:border-indigo-500 resize-none leading-relaxed" required>
+[
+  {"t": 0, "w": 0},
+  {"t": 40, "w": 50},
+  {"t": 150, "w": 250}
+]</textarea>
+            </div>
+
+            <div class="mt-2 flex gap-3">
+                <button type="button" onclick="document.getElementById('shareModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">취소</button>
+                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">공유하기</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-6 py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-[100] pointer-events-none text-sm font-medium">메시지</div>
+
+    <script>
+        const gridEl = document.getElementById('recipe-grid');
+        const fTemp = document.getElementById('f-temp');
+        const tempIndicator = document.getElementById('temp-indicator');
+        const toast = document.getElementById('toast');
+
+        // 온도 시각화
+        fTemp.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            if(isNaN(val)) return tempIndicator.textContent = '';
+            if(val >= 90) { tempIndicator.textContent = 'Hot'; tempIndicator.className = 'text-red-400 text-[10px]'; }
+            else if(val >= 80) { tempIndicator.textContent = 'Warm'; tempIndicator.className = 'text-orange-400 text-[10px]'; }
+            else if(val >= 70) { tempIndicator.textContent = 'Mild'; tempIndicator.className = 'text-yellow-400 text-[10px]'; }
+            else { tempIndicator.textContent = 'Cold'; tempIndicator.className = 'text-blue-400 text-[10px]'; }
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
+        }
+
+        // 기본 목업 데이터 (최초 접속시)
+        const mockRecipes = [
+            { id: 'm1', title: '클래식 V60 스탠다드', author: '부쿠마스터', dripper: 'V60', beans: 15, temp: 93, likes: 120, color: '#ef4444', steps: [{t:0,w:0}, {t:30,w:50}, {t:90,w:150}, {t:150,w:250}] },
+            { id: 'm2', title: '아이스 드립 필살기', author: '얼죽아', dripper: 'Kalita', beans: 20, temp: 88, likes: 85, color: '#3b82f6', steps: [{t:0,w:0}, {t:40,w:60}, {t:120,w:180}] },
+            { id: 'm3', title: '에스프레소 기본 추출', author: '머신매니아', dripper: 'Espresso', beans: 18, temp: 95, likes: 200, color: '#f59e0b', steps: [{t:0,w:0}, {t:5,w:2}, {t:10,w:5}, {t:30,w:36}] },
+            { id: 'm4', title: '4:6 카스야 메소드', author: '커피러버', dripper: 'V60', beans: 20, temp: 90, likes: 55, color: '#10b981', steps: [{t:0,w:0}, {t:45,w:50}, {t:90,w:120}, {t:135,w:180}, {t:180,w:240}, {t:210,w:300}] }
+        ];
+
+        // 데이터 로드
+        function getRecipes() {
+            let data = localStorage.getItem('buku_recipes');
+            if(!data) {
+                localStorage.setItem('buku_recipes', JSON.stringify(mockRecipes));
+                return mockRecipes;
+            }
+            return JSON.parse(data);
+        }
+
+        function generatePath(steps) {
+            if (!steps || steps.length === 0) return 'M0,50 L100,50';
+            let path = 'M0,50 ';
+            const maxT = steps[steps.length - 1].t || 1;
+            const maxW = steps[steps.length - 1].w || 1;
+            steps.forEach(s => {
+                const x = (s.t / maxT) * 100;
+                const y = 50 - (s.w / maxW) * 50;
+                path += `L${x},${y} `;
+            });
+            return path;
+        }
+
+        // 필터 로직
+        function filterRecipes(recipes) {
+            const checkedDrippers = Array.from(document.querySelectorAll('#filter-dripper input:checked')).map(el => el.value.toLowerCase());
+            const checkedTemps = Array.from(document.querySelectorAll('#filter-temp input:checked')).map(el => el.value);
+
+            return recipes.filter(r => {
+                let dripperMatch = true;
+                if(checkedDrippers.length > 0) {
+                    dripperMatch = checkedDrippers.some(d => r.dripper.toLowerCase().includes(d));
+                }
+
+                let tempMatch = true;
+                if(checkedTemps.length > 0) {
+                    tempMatch = checkedTemps.some(cond => {
+                        const t = r.temp;
+                        if(cond === 'hot90' && t >= 90) return true;
+                        if(cond === 'hot80' && t >= 80 && t < 90) return true;
+                        if(cond === 'mid70' && t >= 70 && t < 80) return true;
+                        if(cond === 'low70' && t > 25 && t < 70) return true;
+                        if(cond === 'cold' && t <= 25) return true;
+                        return false;
+                    });
+                }
+
+                return dripperMatch && tempMatch;
+            });
+        }
+
+        function renderRecipes() {
+            const allRecipes = getRecipes();
+            const filtered = filterRecipes(allRecipes);
+            
+            gridEl.innerHTML = '';
+            if(filtered.length === 0) {
+                gridEl.innerHTML = '<div class="col-span-full text-center py-10 text-zinc-500">조건에 맞는 레시피가 없습니다.</div>';
+                return;
+            }
+
+            filtered.forEach(recipe => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 group flex flex-col relative cursor-pointer';
+                // 클릭 시 스마트 추출 앱으로 이동
+                card.onclick = () => window.location.href = `bookoo-pro-brew.html?recipeId=${recipe.id}`;
+                
+                const timeStr = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].t + 's' : '-';
+                const maxWater = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].w : '-';
+                const path = generatePath(recipe.steps);
+                const color = recipe.color || '#6366f1';
+
+                card.innerHTML = `
+                    <div class="h-28 bg-zinc-900/50 relative overflow-hidden flex items-end p-2 border-b border-zinc-800">
+                        <div class="absolute inset-0 opacity-20" style="background: linear-gradient(180deg, transparent 0%, ${color} 100%);"></div>
+                        <svg class="w-full h-full absolute inset-0 drop-shadow-md" viewBox="0 0 100 50" preserveAspectRatio="none">
+                            <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="graph-line"></path>
+                        </svg>
+                        <div class="absolute top-2 right-2 bg-black/60 backdrop-blur rounded px-2 py-0.5 text-[10px] text-white font-mono border border-zinc-700">${timeStr}</div>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col">
+                        <h3 class="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-indigo-400 transition-colors">${recipe.title}</h3>
+                        <div class="text-xs text-zinc-400 mb-3">👤 ${recipe.author}</div>
+                        <div class="flex flex-wrap gap-1.5 mb-4">
+                            <span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] font-medium border border-zinc-700">${recipe.dripper}</span>
+                            <span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] font-medium border border-zinc-700">${recipe.beans}g : ${maxWater}g</span>
+                            <span class="px-2 py-0.5 border rounded text-[10px] font-medium" style="color:${color}; border-color:${color}40; background-color:${color}10">${recipe.temp}°C</span>
+                        </div>
+                        <div class="mt-auto pt-3 border-t border-zinc-800 flex justify-between items-center">
+                            <div class="text-xs text-zinc-500">❤️ ${recipe.likes || 0}</div>
+                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all shadow-lg">앱으로 가져오기</button>
+                        </div>
+                    </div>
+                `;
+                gridEl.appendChild(card);
+            });
+        }
+
+        // 필터 이벤트 바인딩
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', renderRecipes));
+        
+        window.resetFilters = () => {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            renderRecipes();
+        }
+
+        // 새 레시피 등록
+        document.getElementById('recipe-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            let stepsParsed;
+            try {
+                stepsParsed = JSON.parse(document.getElementById('f-steps').value);
+                if (!Array.isArray(stepsParsed)) throw new Error();
+            } catch (err) {
+                return showToast('스텝(JSON) 형식이 잘못되었습니다.');
+            }
+
+            const temp = Number(document.getElementById('f-temp').value);
+            let color = '#6366f1';
+            if(temp >= 90) color = '#ef4444';
+            else if(temp >= 80) color = '#f97316';
+            else if(temp >= 70) color = '#eab308';
+            else color = '#3b82f6';
+
+            const newRecipe = {
+                id: 'id_' + Date.now(),
+                title: document.getElementById('f-title').value,
+                author: document.getElementById('f-author').value,
+                password: document.getElementById('f-pw').value,
+                dripper: document.getElementById('f-dripper').value,
+                beans: Number(document.getElementById('f-beans').value),
+                temp: temp,
+                steps: stepsParsed,
+                likes: 0,
+                color: color
+            };
+
+            const recipes = getRecipes();
+            recipes.unshift(newRecipe);
+            localStorage.setItem('buku_recipes', JSON.stringify(recipes));
+            
+            showToast('✅ 레시피가 커뮤니티에 등록되었습니다!');
+            document.getElementById('shareModal').close();
+            document.getElementById('recipe-form').reset();
+            renderRecipes();
+        });
+
+        // 초기 렌더링
+        renderRecipes();
+    </script>
+</body>
+</html>
