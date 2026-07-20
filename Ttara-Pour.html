@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ttara-Pour Smart App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: rgba(15, 23, 42, 0.95); border: 1px solid #334155; color: white;
+            padding: 12px 24px; border-radius: 99px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; z-index: 50; backdrop-filter: blur(8px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .recording-pulse { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-3 md:p-5 gap-4 overflow-hidden">
+
+    <header class="flex justify-between items-center bg-slate-800/80 backdrop-blur p-4 rounded-2xl shadow-lg border border-slate-700 shrink-0">
+        <div class="flex items-center gap-4">
+            <button onclick="window.location.href='index.html'" class="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm bg-slate-700/50 px-3 py-1.5 rounded-lg">
+                ◀ 커뮤니티로
+            </button>
+            <div>
+                <h1 class="text-lg md:text-xl font-bold text-white tracking-tight">Smart Brew App</h1>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span id="bt-status-dot" class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
+                    <span id="bt-status-text" class="text-xs text-slate-400 font-medium">기기 미연결</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-connect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95">
+                저울 연결
+            </button>
+            <button id="btn-disconnect" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 hidden">
+                연결 해제
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+        
+        <div class="lg:col-span-8 flex flex-col gap-4 min-h-0">
+            <!-- 디스플레이 -->
+            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-6 flex justify-between items-end shrink-0 relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-400 mb-1">실시간 무게 (Net Weight)</h3>
+                    <div class="flex items-baseline gap-2">
+                        <div id="display-weight" class="text-6xl font-black tabular-nums text-white tracking-tighter">0.00</div>
+                        <div class="text-xl text-slate-500 font-medium">g</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <h3 class="text-sm font-bold text-slate-400 mb-1">현재 유량</h3>
+                    <div class="flex items-baseline gap-1.5 justify-end">
+                        <div id="display-flow" class="text-3xl font-bold tabular-nums text-blue-400">0.0</div>
+                        <div class="text-sm text-slate-500">g/s</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 그래프 -->
+            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-5 flex-1 flex flex-col min-h-0 relative">
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span id="ext-pulse" class="w-2.5 h-2.5 bg-rose-500 rounded-full hidden"></span> 가이드 추출
+                        </h3>
+                        <select id="recipe-select" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
+                            <option value="none">자유 추출 (가이드 없음)</option>
+                        </select>
+                        <div class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg flex gap-1 items-center">
+                            일치율: <span id="score-val" class="font-bold text-white tabular-nums">--</span>%
+                        </div>
+                    </div>
+                    <button id="btn-extraction" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                        <span id="ext-btn-icon">▶</span> <span id="ext-btn-text">추출 기록 시작 (동기화)</span>
+                    </button>
+                </div>
+                
+                <div class="relative w-full flex-1 bg-slate-900/50 rounded-xl overflow-hidden border border-slate-800">
+                    <canvas id="brewChart" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
+            
+            <div class="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-4 shrink-0">
+                <h3 class="text-sm font-bold text-white mb-3">저울 하드웨어 제어</h3>
+                <p class="text-[10px] text-slate-400 mb-3 leading-tight">부쿠 울트라 스케일 전용 프로토콜 탑재 (XOR CheckSum 자동계산)</p>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 01 00 00">영점 (Tare)</button>
+                    <button class="cmd-btn bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 07 00 00">Tare & Timer Start</button>
+                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 05 00 00">타이머 Stop</button>
+                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 06 00 00">타이머 Reset</button>
+                </div>
+                
+                <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 flex items-center gap-3">
+                    <label class="text-xs font-bold text-slate-300 whitespace-nowrap">비프음 볼륨</label>
+                    <input type="range" id="volume-slider" min="0" max="5" value="3" class="w-full accent-indigo-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
+                    <span id="volume-display" class="text-xs text-slate-400 font-mono w-4">3</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-2xl border border-slate-700 flex-1 flex flex-col min-h-[200px] overflow-hidden shrink-0">
+                <div class="px-4 py-2 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Live Data
+                    </h3>
+                    <div id="ext-time-display" class="text-sm font-mono text-white font-bold">0.0''</div>
+                </div>
+                <div class="flex-1 overflow-auto p-2">
+                    <table class="w-full text-left text-[10px] font-mono text-slate-400">
+                        <tbody id="log-table-body" class="divide-y divide-slate-800/50">
+                            <tr><td class="text-center p-4">데이터 대기중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <div id="toast" class="toast">메시지</div>
+
+    <script>
+        const displayWeight = document.getElementById('display-weight');
+        const displayFlow = document.getElementById('display-flow');
+        const statusDot = document.getElementById('bt-status-dot');
+        const statusText = document.getElementById('bt-status-text');
+        
+        const btnConnect = document.getElementById('btn-connect');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+        const btnExtraction = document.getElementById('btn-extraction');
+        const extBtnIcon = document.getElementById('ext-btn-icon');
+        const extBtnText = document.getElementById('ext-btn-text');
+        const extPulse = document.getElementById('ext-pulse');
+        
+        const recipeSelect = document.getElementById('recipe-select');
+        const logTableBody = document.getElementById('log-table-body');
+        const extTimeDisplay = document.getElementById('ext-time-display');
+
+        let bluetoothDevice = null;
+        let scaleCharacteristic = null;
+        let writeCharacteristic = null;
+        
+        let isConnected = false;
+        let isExtracting = false;
+        let currentRawWeight = 0;
+        let extractionData = [];
+        let extractionStartDevTime = -1;
+        let currentRecipe = null;
+        
+        const canvas = document.getElementById('brewChart');
+        const ctx = canvas.getContext('2d');
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // LocalStorage 레시피 불러오기
+        function loadCloudRecipes() {
+            const saved = localStorage.getItem('buku_recipes');
+            if(saved) {
+                const recipes = JSON.parse(saved);
+                recipes.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = `[커뮤니티] ${r.title}`;
+                    recipeSelect.appendChild(opt);
+                });
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const rId = urlParams.get('recipeId');
+                if (rId) {
+                    recipeSelect.value = rId;
+                    const r = recipes.find(x => x.id === rId);
+                    if(r) {
+                        currentRecipe = r.steps;
+                        showToast(`'${r.title}' 가이드가 세팅되었습니다.`);
+                    }
+                }
+            }
+        }
+        loadCloudRecipes();
+
+        recipeSelect.addEventListener('change', (e) => {
+            const rId = e.target.value;
+            if(rId === 'none') { currentRecipe = null; return; }
+            const saved = JSON.parse(localStorage.getItem('buku_recipes'));
+            const r = saved.find(x => x.id === rId);
+            if(r) currentRecipe = r.steps;
+        });
+
+        // Bluetooth Commands
+        function calcCheckSum(bytes) {
+            let sum = 0;
+            for (let i = 0; i < bytes.length; i++) sum ^= bytes[i];
+            return sum;
+        }
+
+        async function sendCommand(hexArrStr) {
+            if (!writeCharacteristic) return showToast('쓰기(Write) 권한이 없습니다.');
+            try {
+                const parts = hexArrStr.split(' ').map(x => parseInt(x, 16));
+                const checkSum = calcCheckSum(parts);
+                const buffer = new Uint8Array([...parts, checkSum]);
+                
+                if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(buffer);
+                else await writeCharacteristic.writeValue(buffer);
+                
+                showToast('명령 전송 완료');
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        document.querySelectorAll('.cmd-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => sendCommand(e.target.dataset.cmd));
+        });
+
+        document.getElementById('volume-slider').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('volume-display').textContent = val;
+            const hexVal = val.toString(16).padStart(2, '0');
+            sendCommand(`03 0A 02 00 0${hexVal}`);
+        });
+
+        // Connection
+        btnConnect.addEventListener('click', async () => {
+            try {
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [0x0ffe, '00000ffe-0000-1000-8000-00805f9b34fb']
+                });
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                const server = await bluetoothDevice.gatt.connect();
+                
+                let service;
+                try { service = await server.getPrimaryService(0x0ffe); } 
+                catch(e) { service = await server.getPrimaryService('00000ffe-0000-1000-8000-00805f9b34fb'); }
+
+                const characteristics = await service.getCharacteristics();
+                for (const char of characteristics) {
+                    if (char.properties.notify || char.properties.indicate) {
+                        scaleCharacteristic = char;
+                        await scaleCharacteristic.startNotifications();
+                        scaleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+                    }
+                    if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
+                }
+
+                isConnected = true;
+                statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                statusText.textContent = '저울 연결됨';
+                btnConnect.classList.add('hidden');
+                btnDisconnect.classList.remove('hidden');
+                showToast('블루투스 연결 성공!');
+            } catch (error) {
+                showToast('연결 실패: ' + error.message);
+            }
+        });
+
+        btnDisconnect.addEventListener('click', () => { if (bluetoothDevice) bluetoothDevice.gatt.disconnect(); });
+
+        function onDisconnected() {
+            isConnected = false;
+            statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
+            statusText.textContent = '기기 미연결';
+            btnConnect.classList.remove('hidden');
+            btnDisconnect.classList.add('hidden');
+            if(isExtracting) btnExtraction.click();
+        }
+
+        // Data Parsing
+        function handleData(event) {
+            const bytes = new Uint8Array(event.target.value.buffer);
+            if (bytes.length < 20 || bytes[0] !== 0x03 || bytes[1] !== 0x0B) return;
+            
+            const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+            const timeSec = timeRaw / 1000;
+            
+            // 0x2D is '-' and 0x2B is '+'
+            const wSign = bytes[6] === 0x2D ? -1 : 1; 
+            const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
+            const weight = (weightRaw / 100) * wSign;
+            
+            const fSign = bytes[10] === 0x2D ? -1 : 1;
+            const flowRaw = (bytes[11] << 8) | bytes[12];
+            const flow = (flowRaw / 100) * fSign;
+
+            displayWeight.textContent = weight.toFixed(1);
+            displayFlow.textContent = flow.toFixed(1);
+
+            if (isExtracting) {
+                if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
+                let relTime = timeSec - extractionStartDevTime;
+                if (relTime < 0) relTime = 0;
+                
+                extTimeDisplay.textContent = relTime >= 60 ? `${Math.floor(relTime/60)}' ${(relTime%60).toFixed(1)}''` : `${relTime.toFixed(1)}''`;
+                extractionData.push({ t: relTime, w: weight, f: flow });
+
+                // Log table update
+                if(Math.random() < 0.2) { // log every ~5th packet to prevent lag
+                    if(logTableBody.childElementCount === 1 && logTableBody.firstChild.textContent.includes('대기')) logTableBody.innerHTML = '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="p-1 text-slate-500">${relTime.toFixed(1)}s</td><td class="p-1 text-right text-emerald-400">${weight.toFixed(1)}g</td>`;
+                    logTableBody.insertBefore(tr, logTableBody.firstChild);
+                    if (logTableBody.childElementCount > 20) logTableBody.removeChild(logTableBody.lastChild);
+                }
+            }
+        }
+
+        // Extraction Button
+        btnExtraction.addEventListener('click', async () => {
+            isExtracting = !isExtracting;
+            if (isExtracting) {
+                extractionData = [];
+                extractionStartDevTime = -1;
+                logTableBody.innerHTML = '';
+                await sendCommand("03 0A 07 00 00"); // Start & Tare
+                
+                btnExtraction.className = 'bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
+                extPulse.classList.remove('hidden'); extPulse.classList.add('recording-pulse');
+                extBtnIcon.textContent = '■'; extBtnText.textContent = '추출 기록 중지';
+            } else {
+                await sendCommand("03 0A 05 00 00"); // Stop
+                btnExtraction.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
+                extPulse.classList.add('hidden'); extPulse.classList.remove('recording-pulse');
+                extBtnIcon.textContent = '▶'; extBtnText.textContent = '추출 기록 시작 (동기화)';
+            }
+        });
+
+        // Graph Rendering
+        function resizeCanvas() {
+            if (canvas.parentElement) {
+                canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
+                canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 100);
+
+        function drawGraph() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+            ctx.clearRect(0, 0, w, h);
+            
+            const pL = 40, pR = 20, pT = 30, pB = 40;
+            const dW = w - pL - pR;
+            const dH = h - pT - pB;
+
+            let maxT = 60; let maxW = 100; let maxF = 10;
+            
+            if (currentRecipe && currentRecipe.length > 0) {
+                maxT = currentRecipe[currentRecipe.length - 1].t + 30; // 30s margin
+                maxW = Math.ceil(Math.max(...currentRecipe.map(x => x.w)) / 10) * 10;
+            }
+            if (extractionData.length > 0) {
+                const actT = extractionData[extractionData.length - 1].t;
+                const actW = Math.max(...extractionData.map(x => x.w));
+                if (actT > maxT - 10) maxT = actT + 20;
+                if (actW > maxW) maxW = Math.ceil(actW / 10) * 10;
+                maxF = Math.max(maxF, ...extractionData.map(x => x.f)) * 1.5;
+            }
+
+            const getX = (t) => pL + (t / maxT) * dW;
+            const getY = (wg) => pT + dH - (wg / maxW) * dH;
+
+            // Grids
+            ctx.font = '10px Inter'; ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 1;
+            for (let weight = 0; weight <= maxW; weight += 20) {
+                const y = getY(weight);
+                ctx.moveTo(pL, y); ctx.lineTo(w - pR, y);
+                ctx.fillText(weight + 'g', pL - 5, y);
+            }
+            ctx.stroke();
+
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.beginPath();
+            for (let t = 0; t <= maxT; t += 30) {
+                const x = getX(t);
+                ctx.moveTo(x, pT); ctx.lineTo(x, pT + dH);
+                const tStr = t >= 60 ? `${Math.floor(t/60)}'${t%60}''` : `${t}s`;
+                ctx.fillText(tStr, x, pT + dH + 5);
+            }
+            ctx.stroke();
+
+            // Recipe Guide
+            if (currentRecipe && currentRecipe.length > 0) {
+                ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+                for (let i = 0; i < currentRecipe.length; i++) {
+                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.stroke(); ctx.setLineDash([]);
+
+                ctx.fillStyle = '#94a3b8';
+                for (let i = 1; i < currentRecipe.length; i++) {
+                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
+                    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+                    
+                    const tStr = currentRecipe[i].t >= 60 ? `${Math.floor(currentRecipe[i].t/60)}'${currentRecipe[i].t%60}''` : `${currentRecipe[i].t}s`;
+                    
+                    // Draw text and line above marker
+                    ctx.beginPath(); ctx.moveTo(px, py-4); ctx.lineTo(px+10, py-15); ctx.stroke();
+                    ctx.fillText(`${tStr}/${currentRecipe[i].w}g`, px+10, py-25);
+                }
+
+                const endX = getX(currentRecipe[currentRecipe.length-1].t);
+                ctx.beginPath(); ctx.strokeStyle = 'rgba(244,63,94,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
+                ctx.moveTo(endX, pT); ctx.lineTo(endX, pT+dH); ctx.stroke(); ctx.setLineDash([]);
+                ctx.fillStyle = '#f43f5e'; ctx.font = 'bold 11px Inter';
+                // Move finish text to bottom
+                ctx.fillText('🏁 추출 종료', endX, pT+dH-15); 
+                ctx.font = '10px Inter';
+            }
+
+            // Real Data
+            if (extractionData.length > 0) {
+                ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+                for (let i = 0; i < extractionData.length; i++) {
+                    const px = getX(extractionData[i].t); const py = getY(extractionData[i].w);
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+                
+                // Calculate Score
+                if(currentRecipe && currentRecipe.length > 0) {
+                    let totalErr = 0; let count = 0;
+                    const maxRt = currentRecipe[currentRecipe.length-1].t;
+                    extractionData.forEach(d => {
+                        if(d.t > maxRt) return;
+                        let targetW = 0;
+                        for(let j=0; j<currentRecipe.length-1; j++) {
+                            if(d.t >= currentRecipe[j].t && d.t <= currentRecipe[j+1].t) {
+                                let ratio = (d.t - currentRecipe[j].t)/(currentRecipe[j+1].t - currentRecipe[j].t);
+                                targetW = currentRecipe[j].w + (currentRecipe[j+1].w - currentRecipe[j].w)*ratio;
+                                break;
+                            }
+                        }
+                        totalErr += Math.abs(d.w - targetW); count++;
+                    });
+                    
+                    if(count > 0) {
+                        let avgErr = totalErr/count;
+                        let score = Math.max(0, 100 - (avgErr*4));
+                        const sEl = document.getElementById('score-val');
+                        sEl.textContent = score.toFixed(0);
+                        if(score >= 90) sEl.className = 'font-bold tabular-nums text-emerald-400';
+                        else if(score >= 70) sEl.className = 'font-bold tabular-nums text-yellow-400';
+                        else sEl.className = 'font-bold tabular-nums text-rose-400';
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawGraph);
+        }
+        requestAnimationFrame(drawGraph);
+    </script>
+</body>
+</html>
