@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ttara pour Recipe Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #09090b; color: #f8fafc; }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span class="text-rose-500">🛡️</span> Recipe Cloud Admin
+                </h1>
+                <p class="text-sm text-zinc-400 mt-1">로컬 스토리지에 저장된 레시피 관리 및 삭제</p>
+            </div>
+            <button onclick="window.location.href='index.html'" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition-colors">커뮤니티로 돌아가기</button>
+        </header>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
+            <table class="w-full text-left text-sm text-zinc-400">
+                <thead class="bg-zinc-800/50 text-xs uppercase text-zinc-300">
+                    <tr>
+                        <th class="px-6 py-3">레시피명</th>
+                        <th class="px-6 py-3">기여자</th>
+                        <th class="px-6 py-3">기물</th>
+                        <th class="px-6 py-3">원두/온도</th>
+                        <th class="px-6 py-3 text-right">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-tbody" class="divide-y divide-zinc-800/50">
+                    <!-- Javascript Data -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <dialog id="deleteModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-6 w-[90%] max-w-sm m-auto">
+        <h3 class="text-lg font-bold mb-2 text-rose-400">레시피 삭제</h3>
+        <p class="text-sm text-zinc-400 mb-4">해당 레시피를 삭제하려면 작성 시 입력한 비밀번호를 확인해주세요.</p>
+        <input type="password" id="del-pw" placeholder="비밀번호" class="w-full bg-black/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white mb-4 outline-none focus:border-rose-500">
+        <div class="flex gap-2">
+            <button onclick="document.getElementById('deleteModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-sm transition-colors">취소</button>
+            <button id="btn-confirm-delete" class="flex-1 bg-rose-600 hover:bg-rose-500 py-2 rounded-xl text-sm font-bold transition-colors">삭제하기</button>
+        </div>
+    </dialog>
+
+    <script>
+        let currentDeleteId = null;
+        let currentDeletePw = null;
+
+        function loadAdminData() {
+            const tbody = document.getElementById('admin-tbody');
+            const data = localStorage.getItem('buku_recipes');
+            
+            if(!data) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-zinc-500">등록된 레시피가 없습니다.</td></tr>';
+                return;
+            }
+
+            const recipes = JSON.parse(data);
+            tbody.innerHTML = '';
+            
+            // 목업 데이터(m1,m2...)는 삭제 불가 처리 (비밀번호 모름)
+            recipes.forEach((recipe) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-zinc-800/30 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-white">${recipe.title}</td>
+                    <td class="px-6 py-4">${recipe.author}</td>
+                    <td class="px-6 py-4">${recipe.dripper}</td>
+                    <td class="px-6 py-4">${recipe.beans}g / ${recipe.temp}°C</td>
+                    <td class="px-6 py-4 text-right">
+                        ${recipe.id.startsWith('m') ? 
+                            '<span class="text-xs text-zinc-600">기본 제공</span>' : 
+                            `<button class="text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1.5 rounded transition-colors del-btn" data-id="${recipe.id}" data-pw="${recipe.password}">삭제</button>`
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.del-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentDeleteId = e.target.dataset.id;
+                    currentDeletePw = e.target.dataset.pw;
+                    document.getElementById('del-pw').value = '';
+                    document.getElementById('deleteModal').showModal();
+                });
+            });
+        }
+
+        document.getElementById('btn-confirm-delete').addEventListener('click', () => {
+            const inputPw = document.getElementById('del-pw').value;
+            if(inputPw !== currentDeletePw) {
+                alert("비밀번호가 일치하지 않습니다.");
+                document.getElementById('del-pw').value = '';
+                return;
+            }
+            
+            let recipes = JSON.parse(localStorage.getItem('buku_recipes'));
+            recipes = recipes.filter(r => r.id !== currentDeleteId);
+            localStorage.setItem('buku_recipes', JSON.stringify(recipes));
+            
+            document.getElementById('deleteModal').close();
+            loadAdminData(); // 갱신
+        });
+
+        loadAdminData();
+    </script>
+</body>
+</html>
