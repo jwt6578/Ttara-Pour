@@ -8,6 +8,6 @@
 
 ## ✨ Key Features
 > * **Bluetooth Scale Integration:** Seamlessly connect smart scales to track real-time weight, time, and flow rate.
-* **Brewing Curve Visualization:** Turn your extraction data into intuitive, beautiful graphs.
-* **Recipe Sharing & Forking:** Upload your best brew, or copy and modify ("fork") recipes from other users in the community.
-* **Variable Tracking:** Keep a detailed log of your beans, grind size, temperature, and yield.
+> * **Brewing Curve Visualization:** Turn your extraction data into intuitive, beautiful graphs.
+> * **Recipe Sharing & Forking:** Upload your best brew, or copy and modify ("fork") recipes from other users in the community.
+> * **Variable Tracking:** Keep a detailed log of your beans, grind size, temperature, and yield.
