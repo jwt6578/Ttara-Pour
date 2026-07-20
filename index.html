@@ -58,7 +58,7 @@
 
         <div class="flex items-center gap-4">
             <button onclick="window.location.href='admin.html'" class="text-xs text-zinc-500 hover:text-zinc-300 mr-2 hidden md:block">관리자 패널</button>
-            <button onclick="document.getElementById('shareModal').showModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 active:scale-95">
+            <button onclick="document.getElementById('modal-step-1').classList.remove('hidden'); document.getElementById('modal-step-2').classList.add('hidden'); document.getElementById('shareModal').showModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 active:scale-95">
                 내 기록 공유하기
             </button>
         </div>
@@ -113,61 +113,93 @@
             </button>
         </div>
         
-        <form id="recipe-form" class="p-6 flex flex-col gap-4">
-            <div>
-                <label class="block text-xs font-bold text-zinc-400 mb-1.5">레시피 이름 (프로파일 명)</label>
-                <input type="text" id="f-title" placeholder="예: 단맛을 끌어올리는 케냐 AA" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">기여자 (이름)</label>
-                    <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호</label>
-                    <input type="password" id="f-pw" placeholder="삭제시 필요" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+        <!-- 단계 1: 선택 화면 -->
+        <div id="modal-step-1" class="p-6 flex flex-col gap-4">
+            <button onclick="window.location.href='Ttara-Pour.html'" class="p-6 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 flex flex-col items-center gap-3 transition-colors text-center">
+                <span class="text-3xl">⚖️</span>
+                <span class="font-bold text-white text-lg">저울과 연동하여 자유 추출 기록하기</span>
+                <span class="text-xs text-zinc-400">스마트 저울(0FFE)과 연결하여 실시간으로 자유롭게 내린 추출 데이터를 기록합니다.</span>
+            </button>
+            <button onclick="document.getElementById('modal-step-1').classList.add('hidden'); document.getElementById('modal-step-2').classList.remove('hidden');" class="p-6 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 flex flex-col items-center gap-3 transition-colors text-center">
+                <span class="text-3xl">📝</span>
+                <span class="font-bold text-white text-lg">레시피 수동 입력 / 유튜브 AI 추출</span>
+                <span class="text-xs text-zinc-400">기존 레시피를 직접 입력하거나, 유튜브 링크를 통해 AI가 자동으로 레시피를 분석해 폼을 채웁니다.</span>
+            </button>
+        </div>
+
+        <!-- 단계 2: 레시피 입력 폼 -->
+        <div id="modal-step-2" class="hidden">
+            <!-- 유튜브 AI 영역 -->
+            <div class="px-6 pt-5 pb-2 border-b border-zinc-800">
+                <div class="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl flex flex-col gap-2">
+                    <h3 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                        ✨ 유튜브 AI 레시피 자동 완성
+                    </h3>
+                    <input type="text" id="yt-url" placeholder="유튜브 링크 (예: https://youtube.com/...)" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none">
+                    <div class="flex gap-2">
+                        <input type="password" id="gemini-key" placeholder="Gemini API Key (무료 발급 필요)" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none">
+                        <button type="button" id="btn-ai-extract" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">AI 분석</button>
+                    </div>
+                    <p class="text-[10px] text-zinc-500">※ 구글 AI Studio에서 무료 API 키를 발급받아 입력해야 작동합니다. (약 10초 소요)</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <form id="recipe-form" class="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
                 <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물 (도구)</label>
-                    <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">레시피 이름 (프로파일 명)</label>
+                    <input type="text" id="f-title" placeholder="예: 단맛을 끌어올리는 케냐 AA" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between">
-                        <span>원두량 (g) / 온도(°C)</span>
-                        <span id="temp-indicator" class="text-blue-400 text-[10px]">Cold</span>
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
-                        <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">기여자 (이름)</label>
+                        <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호</label>
+                        <input type="password" id="f-pw" placeholder="삭제시 필요" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
                     </div>
                 </div>
-            </div>
-            
-            <!-- 온도 컬러 바 -->
-            <div class="w-full h-1.5 rounded-full temp-gradient mb-2 opacity-50"></div>
 
-            <div>
-                <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between items-end">
-                    <span>상세 추출 스텝 (JSON 구조)</span>
-                    <span class="text-[10px] text-zinc-500 font-normal">t:시간(초), w:누적무게(g)</span>
-                </label>
-                <textarea id="f-steps" rows="4" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-indigo-300 font-mono focus:border-indigo-500 resize-none leading-relaxed" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물 (도구)</label>
+                        <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between">
+                            <span>원두량 (g) / 온도(°C)</span>
+                            <span id="temp-indicator" class="text-blue-400 text-[10px]">Cold</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                            <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 온도 컬러 바 -->
+                <div class="w-full h-1.5 rounded-full temp-gradient mb-2 opacity-50"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between items-end">
+                        <span>상세 추출 스텝 (JSON 구조)</span>
+                        <span class="text-[10px] text-zinc-500 font-normal">t:시간(초), w:누적무게(g)</span>
+                    </label>
+                    <textarea id="f-steps" rows="4" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-indigo-300 font-mono focus:border-indigo-500 resize-none leading-relaxed" required>
 [
   {"t": 0, "w": 0},
   {"t": 40, "w": 50},
   {"t": 150, "w": 250}
 ]</textarea>
-            </div>
+                </div>
 
-            <div class="mt-2 flex gap-3">
-                <button type="button" onclick="document.getElementById('shareModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">취소</button>
-                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">공유하기</button>
-            </div>
-        </form>
+                <div class="mt-2 flex gap-3">
+                    <button type="button" onclick="document.getElementById('modal-step-2').classList.add('hidden'); document.getElementById('modal-step-1').classList.remove('hidden');" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">이전으로</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">공유하기</button>
+                </div>
+            </form>
+        </div>
     </dialog>
 
     <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-6 py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-[100] pointer-events-none text-sm font-medium">메시지</div>
@@ -266,7 +298,7 @@
             filtered.forEach(recipe => {
                 const card = document.createElement('div');
                 card.className = 'glass-panel rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 group flex flex-col relative cursor-pointer';
-                // 클릭 시 스마트 추출 앱으로 이동
+                // 클릭 시 스마트 추출 앱으로 이동 (파일 이름 매칭)
                 card.onclick = () => window.location.href = `Ttara-Pour.html?recipeId=${recipe.id}`;
                 
                 const timeStr = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].t + 's' : '-';
@@ -308,6 +340,73 @@
             renderRecipes();
         }
 
+        // 유튜브 AI 분석 로직
+        document.getElementById('btn-ai-extract').addEventListener('click', async () => {
+            const url = document.getElementById('yt-url').value;
+            const apiKey = document.getElementById('gemini-key').value;
+            
+            if (!url) return showToast('유튜브 링크를 입력해주세요.');
+            if (!apiKey) return showToast('Gemini API Key를 입력해주세요.');
+
+            const btn = document.getElementById('btn-ai-extract');
+            btn.textContent = '분석중...';
+            btn.disabled = true;
+            showToast("AI가 영상을 분석 중입니다... ☕ (약 10초 소요)");
+
+            const systemPrompt = `당신은 세계 최고의 바리스타 AI입니다. 주어진 유튜브 링크의 영상 내용에서 커피 추출 레시피를 분석하여 정확히 다음 JSON 형식으로만 응답하세요. 없는 정보는 적절한 푸어오버(V60) 레시피로 그럴싸하게 추론하세요.
+            {
+              "title": "레시피 제목 (영상 제목 기반)",
+              "author": "유튜버 이름 또는 채널명",
+              "dripper": "추출 기구 (예: Hario V60)",
+              "beans": 15,
+              "temp": 93,
+              "steps": [ {"t": 0, "w": 0}, {"t": 40, "w": 50}, {"t": 150, "w": 250} ]
+            }
+            시간(t)은 초 단위, 무게(w)는 누적 그람(g) 단위입니다. 마크다운 기호 없이 반드시 순수한 JSON 객체만 반환하세요.`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `다음 유튜브 영상에서 커피 레시피를 추출해줘: ${url}` }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error('API 호출 실패');
+                const result = await response.json();
+                let text = result.candidates[0].content.parts[0].text;
+                
+                // 마크다운 제거 처리
+                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const recipeData = JSON.parse(text);
+
+                if(recipeData.title) document.getElementById('f-title').value = recipeData.title;
+                if(recipeData.author) document.getElementById('f-author').value = recipeData.author;
+                if(recipeData.dripper) document.getElementById('f-dripper').value = recipeData.dripper;
+                if(recipeData.beans) document.getElementById('f-beans').value = recipeData.beans;
+                if(recipeData.temp) {
+                    const tInput = document.getElementById('f-temp');
+                    tInput.value = recipeData.temp;
+                    tInput.dispatchEvent(new Event('input')); // 색상 업데이트 트리거
+                }
+                if(recipeData.steps) {
+                    document.getElementById('f-steps').value = JSON.stringify(recipeData.steps, null, 2);
+                }
+                
+                showToast("✨ AI 분석 완료! 내용을 확인해주세요.");
+            } catch (error) {
+                console.error(error);
+                showToast("AI 분석에 실패했습니다. 키 또는 링크를 확인하세요.");
+            } finally {
+                btn.textContent = 'AI 분석';
+                btn.disabled = false;
+            }
+        });
+
         // 새 레시피 등록
         document.getElementById('recipe-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -346,6 +445,11 @@
             showToast('✅ 레시피가 커뮤니티에 등록되었습니다!');
             document.getElementById('shareModal').close();
             document.getElementById('recipe-form').reset();
+            
+            // 모달 초기 상태로 되돌리기
+            document.getElementById('modal-step-2').classList.add('hidden');
+            document.getElementById('modal-step-1').classList.remove('hidden');
+
             renderRecipes();
         });
 
