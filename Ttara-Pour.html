@@ -325,7 +325,7 @@
         // ==========================================
         // 블루투스 연결
         // ==========================================
-        btnConnect.addEventListener('click', async () => {
+btnConnect.addEventListener('click', async () => {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -349,12 +349,22 @@
                     if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
                 }
 
+                /* STREAMING_CHUNK:기기 이름 기반 자동 인식 로직 적용 */
+                const dName = (bluetoothDevice.name || '').toLowerCase();
+                if (dName.includes('acaia') || dName.includes('lunar') || dName.includes('pearl') || dName.includes('cinco') || dName.includes('pyxis')) {
+                    scaleTypeSelect.value = 'acaia';
+                } else {
+                    scaleTypeSelect.value = 'bookoo';
+                }
+                // 변경 이벤트를 강제로 발생시켜 UI(비프음 버튼 등)를 알맞게 전환
+                scaleTypeSelect.dispatchEvent(new Event('change'));
+
                 isConnected = true;
                 statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
-                statusText.textContent = '저울 연결됨';
+                statusText.textContent = bluetoothDevice.name || '저울 연결됨';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
-                showToast('블루투스 연결 성공!');
+                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 완료!`);
             } catch (error) {
                 showToast('연결 실패: ' + error.message);
             }
