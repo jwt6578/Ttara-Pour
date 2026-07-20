@@ -3,608 +3,458 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ttarra-Pour Smart Brew</title>
+    <title>Bookoo Recipe Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
-        .toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-            background: rgba(15, 23, 42, 0.95); border: 1px solid #334155; color: white;
-            padding: 12px 24px; border-radius: 99px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            opacity: 0; z-index: 50; backdrop-filter: blur(8px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+        body { 
+            font-family: 'Inter', 'Pretendard', sans-serif; 
+            background-color: #09090b; 
+            color: #f8fafc; 
         }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .recording-pulse { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(63, 63, 70, 0.5);
+        }
+        
+        .graph-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* 온도 인디케이터 그라데이션바 */
+        .temp-gradient {
+            background: linear-gradient(90deg, #3b82f6 0%, #10b981 40%, #f59e0b 70%, #ef4444 100%);
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col p-3 md:p-5 gap-4 overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden relative">
 
-    <header class="flex justify-between items-center bg-slate-800/80 backdrop-blur p-4 rounded-2xl shadow-lg border border-slate-700 shrink-0">
+    <header class="glass-panel px-6 py-4 flex justify-between items-center shrink-0 sticky top-0 z-40 border-b border-zinc-800">
         <div class="flex items-center gap-4">
-            <button onclick="window.location.href='index.html'" class="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm bg-slate-700/50 px-3 py-1.5 rounded-lg">
-                ◀ 커뮤니티로
-            </button>
+            <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 text-indigo-400">
+                <span class="text-xl">☁️</span>
+            </div>
             <div>
-                <h1 class="text-lg md:text-xl font-bold text-white tracking-tight">Smart Brew App</h1>
-                <div class="flex items-center gap-2 mt-0.5">
-                    <span id="bt-status-dot" class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
-                    <span id="bt-status-text" class="text-xs text-slate-400 font-medium">기기 미연결</span>
-                </div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Recipe Cloud</h1>
+                <p class="text-xs text-zinc-400 font-medium">전 세계 바리스타들의 커피 추출 레시피</p>
             </div>
         </div>
-        <div class="flex gap-2">
-            <button id="btn-connect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95">
-                저울 연결
-            </button>
-            <button id="btn-disconnect" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 hidden">
-                연결 해제
+
+        <div class="flex items-center gap-4">
+            <button onclick="window.location.href='admin.html'" class="text-xs text-zinc-500 hover:text-zinc-300 mr-2 hidden md:block">관리자 패널</button>
+            <button onclick="document.getElementById('modal-step-1').classList.remove('hidden'); document.getElementById('modal-step-2').classList.add('hidden'); document.getElementById('shareModal').showModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 active:scale-95">
+                내 기록 공유하기
             </button>
         </div>
     </header>
 
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+    <div class="flex-1 flex overflow-hidden">
         
-        <div class="lg:col-span-8 flex flex-col gap-4 min-h-0">
-            <!-- 디스플레이 -->
-            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-6 flex justify-between items-end shrink-0 relative overflow-hidden">
-                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div>
-                    <h3 class="text-sm font-bold text-slate-400 mb-1">실시간 무게 (Net Weight)</h3>
-                    <div class="flex items-baseline gap-2">
-                        <div id="display-weight" class="text-6xl font-black tabular-nums text-white tracking-tighter">0.00</div>
-                        <div class="text-xl text-slate-500 font-medium">g</div>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <h3 class="text-sm font-bold text-slate-400 mb-1">현재 유량</h3>
-                    <div class="flex items-baseline gap-1.5 justify-end">
-                        <div id="display-flow" class="text-3xl font-bold tabular-nums text-blue-400">0.0</div>
-                        <div class="text-sm text-slate-500">g/s</div>
-                    </div>
+        <aside class="w-64 glass-panel border-r border-zinc-800 p-5 hidden lg:flex flex-col gap-6 overflow-y-auto">
+            <div>
+                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">추출 도구 (기물)</h3>
+                <div class="flex flex-col gap-2" id="filter-dripper">
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="V60" class="accent-indigo-500"> Hario V60</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Kalita" class="accent-indigo-500"> Kalita Wave</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Aeropress" class="accent-indigo-500"> Aeropress</label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-300 hover:text-white cursor-pointer"><input type="checkbox" value="Espresso" class="accent-indigo-500"> Espresso</label>
                 </div>
             </div>
 
-            <!-- 그래프 -->
-            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-5 flex-1 flex flex-col min-h-0 relative">
-                <div class="flex justify-between items-center mb-4 shrink-0">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                            <span id="ext-pulse" class="w-2.5 h-2.5 bg-rose-500 rounded-full hidden"></span> 가이드 추출
-                        </h3>
-                        <select id="recipe-select" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
-                            <option value="none">자유 추출 (가이드 없음)</option>
-                        </select>
-                        <div class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg flex gap-1 items-center">
-                            일치율: <span id="score-val" class="font-bold text-white tabular-nums">--</span>%
-                        </div>
-                    </div>
-                    <button id="btn-extraction" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2">
-                        <span id="ext-btn-icon">▶</span> <span id="ext-btn-text">추출 기록 시작 (동기화)</span>
-                    </button>
-                </div>
-                
-                <div class="relative w-full flex-1 bg-slate-900/50 rounded-xl overflow-hidden border border-slate-800">
-                    <canvas id="brewChart" class="w-full h-full block"></canvas>
+            <div>
+                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">추출 온도 (물)</h3>
+                <div class="flex flex-col gap-2" id="filter-temp">
+                    <label class="flex items-center gap-2 text-sm text-red-300 hover:text-red-200 cursor-pointer"><input type="checkbox" value="hot90" class="accent-red-500"> 90°C 이상 (매우 뜨거움)</label>
+                    <label class="flex items-center gap-2 text-sm text-orange-300 hover:text-orange-200 cursor-pointer"><input type="checkbox" value="hot80" class="accent-orange-500"> 80°C ~ 89°C (뜨거움)</label>
+                    <label class="flex items-center gap-2 text-sm text-yellow-300 hover:text-yellow-200 cursor-pointer"><input type="checkbox" value="mid70" class="accent-yellow-500"> 70°C ~ 79°C (따뜻함)</label>
+                    <label class="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 cursor-pointer"><input type="checkbox" value="low70" class="accent-emerald-500"> 70°C 미만 (미지근함)</label>
+                    <label class="flex items-center gap-2 text-sm text-blue-300 hover:text-blue-200 cursor-pointer"><input type="checkbox" value="cold" class="accent-blue-500"> 상온 추출 (Cold Brew)</label>
                 </div>
             </div>
+
+            <button onclick="resetFilters()" class="mt-auto bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700">
+                필터 초기화
+            </button>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-black/40">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white">🔥 커뮤니티 레시피</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="recipe-grid">
+                <!-- Javascript로 데이터 바인딩 됨 -->
+            </div>
+        </main>
+    </div>
+
+    <dialog id="shareModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-lg m-auto overflow-hidden relative z-50">
+        <div class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/50">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                나의 추출 기록 공유하기
+            </h2>
+            <button onclick="document.getElementById('shareModal').close()" class="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-700">
+                ✖
+            </button>
+        </div>
+        
+        <!-- 단계 1: 선택 화면 -->
+        <div id="modal-step-1" class="p-6 flex flex-col gap-4">
+            <button onclick="window.location.href='Ttara-Pour.html'" class="p-6 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 flex flex-col items-center gap-3 transition-colors text-center">
+                <span class="text-3xl">⚖️</span>
+                <span class="font-bold text-white text-lg">저울과 연동하여 자유 추출 기록하기</span>
+                <span class="text-xs text-zinc-400">스마트 저울(0FFE)과 연결하여 실시간으로 자유롭게 내린 추출 데이터를 기록합니다.</span>
+            </button>
+            <button onclick="document.getElementById('modal-step-1').classList.add('hidden'); document.getElementById('modal-step-2').classList.remove('hidden');" class="p-6 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 flex flex-col items-center gap-3 transition-colors text-center">
+                <span class="text-3xl">📝</span>
+                <span class="font-bold text-white text-lg">레시피 수동 입력 / 유튜브 AI 추출</span>
+                <span class="text-xs text-zinc-400">기존 레시피를 직접 입력하거나, 유튜브 링크를 통해 AI가 자동으로 레시피를 분석해 폼을 채웁니다.</span>
+            </button>
         </div>
 
-        <div class="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
-            
-            <!-- 저울 제어 패널 (브랜드 선택 및 팝업 통합) -->
-            <div class="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-4 shrink-0">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-white">저울 하드웨어 제어</h3>
-                    <select id="scale-type-select" class="bg-slate-900 border border-slate-700 rounded text-xs text-white px-2 py-1 outline-none focus:border-indigo-500 transition-colors">
-                        <option value="bookoo">Bookoo (부쿠)</option>
-                        <option value="acaia">Acaia (아카이아)</option>
-                    </select>
-                </div>
-                <p class="text-[10px] text-slate-400 mb-3 leading-tight">선택한 저울 브랜드에 맞춰 프로토콜 명령이 자동 변환되어 전송됩니다.</p>
-                
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <button id="btn-ctrl-tare" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">영점 (Tare)</button>
-                    <button id="btn-ctrl-start" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/40 py-2 rounded-lg text-xs font-bold transition-colors">Tare & Start</button>
-                    <button id="btn-ctrl-stop" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Stop</button>
-                    <button id="btn-ctrl-reset" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Reset</button>
-                </div>
-                
-                <!-- 비프음 팝업 버튼 영역 -->
-                <div class="relative">
-                    <button id="btn-volume-popup" class="w-full bg-slate-800 border border-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg text-xs font-bold transition-all flex justify-center items-center gap-2">
-                        🔊 비프음 음량 설정
-                    </button>
-                    
-                    <!-- 팝업 패널 (기본 숨김) -->
-                    <div id="volume-popup-panel" class="hidden absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-white">비프음 크기 조절</span>
-                            <span id="volume-display" class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded font-mono font-bold">3</span>
-                        </div>
-                        <input type="range" id="volume-slider" min="0" max="5" value="3" class="w-full accent-indigo-500 bg-slate-900 rounded-lg appearance-none h-2 cursor-pointer">
-                        <p class="text-[9px] text-slate-400 mt-3 text-center">* Bookoo 저울 전용 (0: 음소거 ~ 5: 최대)</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 rounded-2xl border border-slate-700 flex-1 flex flex-col min-h-[200px] overflow-hidden shrink-0">
-                <div class="px-4 py-2 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Live Data
+        <!-- 단계 2: 레시피 입력 폼 -->
+        <div id="modal-step-2" class="hidden">
+            <!-- 유튜브 AI 영역 -->
+            <div class="px-6 pt-5 pb-2 border-b border-zinc-800">
+                <div class="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl flex flex-col gap-2">
+                    <h3 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                        ✨ 유튜브 AI 레시피 자동 완성
                     </h3>
-                    <div id="ext-time-display" class="text-sm font-mono text-white font-bold">0.0''</div>
-                </div>
-                <div class="flex-1 overflow-auto p-2">
-                    <table class="w-full text-left text-[10px] font-mono text-slate-400">
-                        <tbody id="log-table-body" class="divide-y divide-slate-800/50">
-                            <tr><td class="text-center p-4">데이터 대기중...</td></tr>
-                        </tbody>
-                    </table>
+                    <input type="text" id="yt-url" placeholder="유튜브 링크 (예: https://youtube.com/...)" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none">
+                    <div class="flex gap-2">
+                        <input type="password" id="gemini-key" placeholder="Gemini API Key (무료 발급 필요)" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none">
+                        <button type="button" id="btn-ai-extract" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">AI 분석</button>
+                    </div>
+                    <p class="text-[10px] text-zinc-500">※ 구글 AI Studio에서 무료 API 키를 발급받아 입력해야 작동합니다. (약 10초 소요)</p>
                 </div>
             </div>
-            
-        </div>
-    </main>
 
-    <div id="toast" class="toast">메시지</div>
+            <form id="recipe-form" class="p-6 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">레시피 이름 (프로파일 명)</label>
+                    <input type="text" id="f-title" placeholder="예: 단맛을 끌어올리는 케냐 AA" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">기여자 (이름)</label>
+                        <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호</label>
+                        <input type="password" id="f-pw" placeholder="삭제시 필요" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물 (도구)</label>
+                        <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between">
+                            <span>원두량 (g) / 온도(°C)</span>
+                            <span id="temp-indicator" class="text-blue-400 text-[10px]">Cold</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                            <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 온도 컬러 바 -->
+                <div class="w-full h-1.5 rounded-full temp-gradient mb-2 opacity-50"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5 flex justify-between items-end">
+                        <span>상세 추출 스텝 (JSON 구조)</span>
+                        <span class="text-[10px] text-zinc-500 font-normal">t:시간(초), w:누적무게(g)</span>
+                    </label>
+                    <textarea id="f-steps" rows="4" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-indigo-300 font-mono focus:border-indigo-500 resize-none leading-relaxed" required>
+[
+  {"t": 0, "w": 0},
+  {"t": 40, "w": 50},
+  {"t": 150, "w": 250}
+]</textarea>
+                </div>
+
+                <div class="mt-2 flex gap-3">
+                    <button type="button" onclick="document.getElementById('modal-step-2').classList.add('hidden'); document.getElementById('modal-step-1').classList.remove('hidden');" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">이전으로</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">공유하기</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-6 py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-[100] pointer-events-none text-sm font-medium">메시지</div>
 
     <script>
-        const displayWeight = document.getElementById('display-weight');
-        const displayFlow = document.getElementById('display-flow');
-        const statusDot = document.getElementById('bt-status-dot');
-        const statusText = document.getElementById('bt-status-text');
-        
-        const btnConnect = document.getElementById('btn-connect');
-        const btnDisconnect = document.getElementById('btn-disconnect');
-        const btnExtraction = document.getElementById('btn-extraction');
-        const extBtnIcon = document.getElementById('ext-btn-icon');
-        const extBtnText = document.getElementById('ext-btn-text');
-        const extPulse = document.getElementById('ext-pulse');
-        
-        const recipeSelect = document.getElementById('recipe-select');
-        const logTableBody = document.getElementById('log-table-body');
-        const extTimeDisplay = document.getElementById('ext-time-display');
+        const gridEl = document.getElementById('recipe-grid');
+        const fTemp = document.getElementById('f-temp');
+        const tempIndicator = document.getElementById('temp-indicator');
+        const toast = document.getElementById('toast');
 
-        // 저울 및 볼륨 제어 UI 변수
-        let currentScaleType = 'bookoo';
-        const scaleTypeSelect = document.getElementById('scale-type-select');
-        const btnVolPopup = document.getElementById('btn-volume-popup');
-        const volPopupPanel = document.getElementById('volume-popup-panel');
-
-        let bluetoothDevice = null;
-        let scaleCharacteristic = null;
-        let writeCharacteristic = null;
-        
-        let isConnected = false;
-        let isExtracting = false;
-        let currentRawWeight = 0;
-        let extractionData = [];
-        let extractionStartDevTime = -1;
-        let currentRecipe = null;
-        
-        const canvas = document.getElementById('brewChart');
-        const ctx = canvas.getContext('2d');
+        // 온도 시각화
+        fTemp.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            if(isNaN(val)) return tempIndicator.textContent = '';
+            if(val >= 90) { tempIndicator.textContent = 'Hot'; tempIndicator.className = 'text-red-400 text-[10px]'; }
+            else if(val >= 80) { tempIndicator.textContent = 'Warm'; tempIndicator.className = 'text-orange-400 text-[10px]'; }
+            else if(val >= 70) { tempIndicator.textContent = 'Mild'; tempIndicator.className = 'text-yellow-400 text-[10px]'; }
+            else { tempIndicator.textContent = 'Cold'; tempIndicator.className = 'text-blue-400 text-[10px]'; }
+        });
 
         function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
         }
 
-        // LocalStorage 레시피 불러오기
-        function loadCloudRecipes() {
-            const saved = localStorage.getItem('buku_recipes');
-            if(saved) {
-                const recipes = JSON.parse(saved);
-                recipes.forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r.id;
-                    opt.textContent = `[커뮤니티] ${r.title}`;
-                    recipeSelect.appendChild(opt);
-                });
+        // 기본 목업 데이터 (최초 접속시)
+        const mockRecipes = [
+            { id: 'm1', title: '클래식 V60 스탠다드', author: '부쿠마스터', dripper: 'V60', beans: 15, temp: 93, likes: 120, color: '#ef4444', steps: [{t:0,w:0}, {t:30,w:50}, {t:90,w:150}, {t:150,w:250}] },
+            { id: 'm2', title: '아이스 드립 필살기', author: '얼죽아', dripper: 'Kalita', beans: 20, temp: 88, likes: 85, color: '#3b82f6', steps: [{t:0,w:0}, {t:40,w:60}, {t:120,w:180}] },
+            { id: 'm3', title: '에스프레소 기본 추출', author: '머신매니아', dripper: 'Espresso', beans: 18, temp: 95, likes: 200, color: '#f59e0b', steps: [{t:0,w:0}, {t:5,w:2}, {t:10,w:5}, {t:30,w:36}] },
+            { id: 'm4', title: '4:6 카스야 메소드', author: '커피러버', dripper: 'V60', beans: 20, temp: 90, likes: 55, color: '#10b981', steps: [{t:0,w:0}, {t:45,w:50}, {t:90,w:120}, {t:135,w:180}, {t:180,w:240}, {t:210,w:300}] }
+        ];
 
-                const urlParams = new URLSearchParams(window.location.search);
-                const rId = urlParams.get('recipeId');
-                if (rId) {
-                    recipeSelect.value = rId;
-                    const r = recipes.find(x => x.id === rId);
-                    if(r) {
-                        currentRecipe = r.steps;
-                        showToast(`'${r.title}' 가이드가 세팅되었습니다.`);
-                    }
-                }
+        // 데이터 로드
+        function getRecipes() {
+            let data = localStorage.getItem('buku_recipes');
+            if(!data) {
+                localStorage.setItem('buku_recipes', JSON.stringify(mockRecipes));
+                return mockRecipes;
             }
-        }
-        loadCloudRecipes();
-
-        recipeSelect.addEventListener('change', (e) => {
-            const rId = e.target.value;
-            if(rId === 'none') { currentRecipe = null; return; }
-            const saved = JSON.parse(localStorage.getItem('buku_recipes'));
-            const r = saved.find(x => x.id === rId);
-            if(r) currentRecipe = r.steps;
-        });
-
-        // ==========================================
-        // 저울 종류 및 명령어 제어 로직
-        // ==========================================
-        
-        // 부쿠 저울용 XOR 체크섬 계산
-        function calcCheckSum(bytes) {
-            let sum = 0;
-            for (let i = 0; i < bytes.length; i++) sum ^= bytes[i];
-            return sum;
+            return JSON.parse(data);
         }
 
-        // 저울 변경 시 비프음 버튼 활성/비활성
-        scaleTypeSelect.addEventListener('change', (e) => {
-            currentScaleType = e.target.value;
-            if (currentScaleType === 'acaia') {
-                btnVolPopup.style.opacity = '0.3';
-                btnVolPopup.disabled = true;
-                volPopupPanel.classList.add('hidden');
-                showToast('아카이아는 비프음 설정을 지원하지 않습니다.');
-            } else {
-                btnVolPopup.style.opacity = '1';
-                btnVolPopup.disabled = false;
-            }
-        });
-
-        // 팝업 열기/닫기 처리
-        btnVolPopup.addEventListener('click', (e) => {
-            e.stopPropagation();
-            volPopupPanel.classList.toggle('hidden');
-        });
-        document.addEventListener('click', (e) => {
-            if (!volPopupPanel.contains(e.target) && e.target !== btnVolPopup) {
-                volPopupPanel.classList.add('hidden');
-            }
-        });
-
-        // 볼륨 슬라이더 전송
-        document.getElementById('volume-slider').addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            document.getElementById('volume-display').textContent = val;
-            const hexVal = val.toString(16).padStart(2, '0');
-            sendScaleCommandRaw(`03 0A 02 00 0${hexVal}`);
-        });
-
-        // 통합 명령어 전송 함수
-        async function sendScaleCommandRaw(hexStr) {
-            if (!writeCharacteristic) return showToast('기기가 연결되지 않았습니다.');
-            try {
-                const parts = hexStr.split(' ').map(x => parseInt(x, 16));
-                let buffer;
-                
-                // Bookoo일 경우에만 맨 끝에 체크섬을 붙여서 전송
-                if (currentScaleType === 'bookoo') {
-                    const checkSum = calcCheckSum(parts);
-                    buffer = new Uint8Array([...parts, checkSum]);
-                } else {
-                    // Acaia는 체크섬 연산 없이 원본 그대로 전송
-                    buffer = new Uint8Array(parts);
-                }
-                
-                if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(buffer);
-                else await writeCharacteristic.writeValue(buffer);
-                
-            } catch(e) {
-                console.error(e);
-            }
+        function generatePath(steps) {
+            if (!steps || steps.length === 0) return 'M0,50 L100,50';
+            let path = 'M0,50 ';
+            const maxT = steps[steps.length - 1].t || 1;
+            const maxW = steps[steps.length - 1].w || 1;
+            steps.forEach(s => {
+                const x = (s.t / maxT) * 100;
+                const y = 50 - (s.w / maxW) * 50;
+                path += `L${x},${y} `;
+            });
+            return path;
         }
 
-        // 상태별 명령어 매핑 및 전송
-        function execCommand(cmdType) {
-            let hexCmd = "";
-            if (currentScaleType === 'bookoo') {
-                if (cmdType === 'tare') hexCmd = "03 0A 01 00 00";
-                else if (cmdType === 'start') hexCmd = "03 0A 07 00 00"; // Tare & Start
-                else if (cmdType === 'stop') hexCmd = "03 0A 05 00 00";
-                else if (cmdType === 'reset') hexCmd = "03 0A 06 00 00";
-            } else if (currentScaleType === 'acaia') {
-                if (cmdType === 'tare') hexCmd = "EF DD 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00";
-                else if (cmdType === 'start') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Start
-                else if (cmdType === 'stop') hexCmd = "EF DD 0D 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Stop
-                else if (cmdType === 'reset') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Reset/Start 
-            }
-            if (hexCmd) sendScaleCommandRaw(hexCmd);
-        }
+        // 필터 로직
+        function filterRecipes(recipes) {
+            const checkedDrippers = Array.from(document.querySelectorAll('#filter-dripper input:checked')).map(el => el.value.toLowerCase());
+            const checkedTemps = Array.from(document.querySelectorAll('#filter-temp input:checked')).map(el => el.value);
 
-        document.getElementById('btn-ctrl-tare').addEventListener('click', () => execCommand('tare'));
-        document.getElementById('btn-ctrl-start').addEventListener('click', () => execCommand('start'));
-        document.getElementById('btn-ctrl-stop').addEventListener('click', () => execCommand('stop'));
-        document.getElementById('btn-ctrl-reset').addEventListener('click', () => execCommand('reset'));
-
-        // ==========================================
-        // 블루투스 연결
-        // ==========================================
-        btnConnect.addEventListener('click', async () => {
-            try {
-                bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [0x0ffe, '00000ffe-0000-1000-8000-00805f9b34fb']
-                });
-
-                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                const server = await bluetoothDevice.gatt.connect();
-                
-                let service;
-                try { service = await server.getPrimaryService(0x0ffe); } 
-                catch(e) { service = await server.getPrimaryService('00000ffe-0000-1000-8000-00805f9b34fb'); }
-
-                const characteristics = await service.getCharacteristics();
-                for (const char of characteristics) {
-                    if (char.properties.notify || char.properties.indicate) {
-                        scaleCharacteristic = char;
-                        await scaleCharacteristic.startNotifications();
-                        scaleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
-                    }
-                    if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
+            return recipes.filter(r => {
+                let dripperMatch = true;
+                if(checkedDrippers.length > 0) {
+                    dripperMatch = checkedDrippers.some(d => r.dripper.toLowerCase().includes(d));
                 }
 
-                isConnected = true;
-                statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
-                statusText.textContent = '저울 연결됨';
-                btnConnect.classList.add('hidden');
-                btnDisconnect.classList.remove('hidden');
-                showToast('블루투스 연결 성공!');
-            } catch (error) {
-                showToast('연결 실패: ' + error.message);
-            }
-        });
-
-        btnDisconnect.addEventListener('click', () => { if (bluetoothDevice) bluetoothDevice.gatt.disconnect(); });
-
-        function onDisconnected() {
-            isConnected = false;
-            statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
-            statusText.textContent = '기기 미연결';
-            btnConnect.classList.remove('hidden');
-            btnDisconnect.classList.add('hidden');
-            if(isExtracting) btnExtraction.click();
-        }
-
-        // ==========================================
-        // 데이터 파싱 (Bookoo & Acaia 지원)
-        // ==========================================
-        function handleData(event) {
-            const bytes = new Uint8Array(event.target.value.buffer);
-            let weight = 0, flow = 0, timeSec = 0;
-            let isValid = false;
-
-            // 1. Bookoo 프로토콜 처리 (03 0B 로 시작)
-            if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
-                const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
-                timeSec = timeRaw / 1000;
-                
-                const wSign = bytes[6] === 0x2D ? -1 : 1; 
-                const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
-                weight = (weightRaw / 100) * wSign;
-                
-                const fSign = bytes[10] === 0x2D ? -1 : 1;
-                const flowRaw = (bytes[11] << 8) | bytes[12];
-                flow = (flowRaw / 100) * fSign;
-                isValid = true;
-            } 
-            // 2. Acaia 프로토콜 기초 처리 (EF DD 로 시작)
-            else if (bytes[0] === 0xEF && bytes[1] === 0xDD && bytes.length >= 10) {
-                const view = new DataView(event.target.value.buffer);
-                try {
-                    // 아카이아 무게 데이터는 보통 5번 Offset에서 32bit Little Endian으로 들어옴
-                    let rawAcaia = view.getInt32(5, true); 
-                    weight = rawAcaia / 10; // 아카이아는 기본적으로 10으로 나누어 g 단위 표시
-                    
-                    // 아카이아는 타임스탬프가 다르게 오므로 로컬 시간 기반으로 대체 추적
-                    if(isExtracting) {
-                        if(extractionStartDevTime === -1) extractionStartDevTime = Date.now();
-                        timeSec = (Date.now() - extractionStartDevTime) / 1000;
-                    }
-                    isValid = true;
-                } catch(e) { return; }
-            }
-            
-            if (!isValid) return; // 알 수 없는 포맷 무시
-
-            // 디스플레이 업데이트
-            displayWeight.textContent = weight.toFixed(1);
-            displayFlow.textContent = flow.toFixed(1);
-
-            // 추출 기록 모드일 때
-            if (isExtracting) {
-                let relTime = 0;
-                if (currentScaleType === 'bookoo') {
-                    if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
-                    relTime = timeSec - extractionStartDevTime;
-                } else {
-                    relTime = timeSec; // Acaia는 위에서 이미 상대시간으로 계산됨
-                }
-                
-                if (relTime < 0) relTime = 0;
-                
-                extTimeDisplay.textContent = relTime >= 60 ? `${Math.floor(relTime/60)}' ${(relTime%60).toFixed(1)}''` : `${relTime.toFixed(1)}''`;
-                extractionData.push({ t: relTime, w: weight, f: flow });
-
-                // 우측 로그 테이블 업데이트 (렉 방지 위해 확률적 출력)
-                if(Math.random() < 0.2) {
-                    if(logTableBody.childElementCount === 1 && logTableBody.firstChild.textContent.includes('대기')) logTableBody.innerHTML = '';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="p-1 text-slate-500">${relTime.toFixed(1)}s</td><td class="p-1 text-right text-emerald-400">${weight.toFixed(1)}g</td>`;
-                    logTableBody.insertBefore(tr, logTableBody.firstChild);
-                    if (logTableBody.childElementCount > 20) logTableBody.removeChild(logTableBody.lastChild);
-                }
-            }
-        }
-
-        // ==========================================
-        // 추출 버튼 토글
-        // ==========================================
-        btnExtraction.addEventListener('click', async () => {
-            isExtracting = !isExtracting;
-            if (isExtracting) {
-                extractionData = [];
-                extractionStartDevTime = -1;
-                logTableBody.innerHTML = '';
-                
-                execCommand('start'); // 브랜드에 맞춰 시작(Tare&Start) 전송
-                
-                btnExtraction.className = 'bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
-                extPulse.classList.remove('hidden'); extPulse.classList.add('recording-pulse');
-                extBtnIcon.textContent = '■'; extBtnText.textContent = '추출 기록 중지';
-            } else {
-                execCommand('stop'); // 브랜드에 맞춰 정지 전송
-                
-                btnExtraction.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
-                extPulse.classList.add('hidden'); extPulse.classList.remove('recording-pulse');
-                extBtnIcon.textContent = '▶'; extBtnText.textContent = '추출 기록 시작 (동기화)';
-            }
-        });
-
-        // ==========================================
-        // 그래프 렌더링
-        // ==========================================
-        function formatTime(t) {
-            return t >= 60 ? `${Math.floor(t/60)}' ${(t%60).toFixed(0)}''` : `${t.toFixed(0)}s`;
-        }
-
-        function resizeCanvas() {
-            if (canvas.parentElement) {
-                canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
-                canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
-                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            }
-        }
-        window.addEventListener('resize', resizeCanvas);
-        setTimeout(resizeCanvas, 100);
-
-        function drawGraph() {
-            const w = canvas.width / window.devicePixelRatio;
-            const h = canvas.height / window.devicePixelRatio;
-            ctx.clearRect(0, 0, w, h);
-            
-            const pL = 40, pR = 30, pT = 30, pB = 40;
-            const dW = w - pL - pR;
-            const dH = h - pT - pB;
-
-            let maxT = 60; let maxW = 100; let maxF = 10;
-            
-            // X, Y축 자동 스케일링 로직
-            if (currentRecipe && currentRecipe.length > 0) {
-                maxT = currentRecipe[currentRecipe.length - 1].t + 30; // 30s margin
-                const recipeMaxW = Math.max(...currentRecipe.map(x => x.w));
-                maxW = Math.ceil(recipeMaxW / 10) * 10;
-            }
-            if (extractionData.length > 0) {
-                const actT = extractionData[extractionData.length - 1].t;
-                const actW = Math.max(...extractionData.map(x => x.w));
-                if (actT > maxT - 20) maxT = actT + 20;
-                if (actW > maxW) maxW = Math.ceil(actW / 10) * 10;
-                maxF = Math.max(maxF, ...extractionData.map(x => x.f)) * 1.5;
-            }
-
-            const getX = (t) => pL + (t / maxT) * dW;
-            const getY = (wg) => pT + dH - (wg / maxW) * dH;
-
-            // 배경 Grid 그리기 (Y축 20단위, X축 30초 단위)
-            ctx.font = '10px Inter'; ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-            ctx.beginPath(); ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 1;
-            
-            for (let weight = 0; weight <= maxW; weight += 20) {
-                const y = getY(weight);
-                ctx.moveTo(pL, y); ctx.lineTo(w - pR + 10, y);
-                ctx.fillText(weight + 'g', pL - 8, y);
-            }
-            ctx.stroke();
-
-            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-            ctx.beginPath();
-            for (let t = 0; t <= maxT; t += 30) {
-                const x = getX(t);
-                ctx.moveTo(x, pT - 10); ctx.lineTo(x, pT + dH);
-                ctx.fillText(formatTime(t), x, pT + dH + 8);
-            }
-            ctx.stroke();
-
-            // 가이드 라인 렌더링
-            if (currentRecipe && currentRecipe.length > 0) {
-                // 선 그리기
-                ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-                for (let i = 0; i < currentRecipe.length; i++) {
-                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
-                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-                }
-                ctx.stroke(); ctx.setLineDash([]);
-
-                // 텍스트 & 마커
-                ctx.fillStyle = '#94a3b8';
-                for (let i = 1; i < currentRecipe.length; i++) {
-                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
-                    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
-                    
-                    // 타겟 텍스트 상단 배치
-                    ctx.font = '10px Inter';
-                    ctx.fillText(`${formatTime(currentRecipe[i].t)} / ${currentRecipe[i].w}g`, px, py - 18);
-                }
-
-                // 종료 시점 마커 (빨간선 하단 배치)
-                const endX = getX(currentRecipe[currentRecipe.length-1].t);
-                ctx.beginPath(); ctx.strokeStyle = 'rgba(244,63,94,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
-                ctx.moveTo(endX, pT); ctx.lineTo(endX, pT+dH); ctx.stroke(); ctx.setLineDash([]);
-                
-                ctx.fillStyle = '#f43f5e'; ctx.font = 'bold 11px Inter';
-                // 글씨를 X축 바닥 근처로 이동
-                ctx.fillText('🏁 추출 종료 타겟', endX, pT + dH - 15); 
-            }
-
-            // 실제 추출 데이터 렌더링
-            if (extractionData.length > 0) {
-                ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-                for (let i = 0; i < extractionData.length; i++) {
-                    const px = getX(extractionData[i].t); const py = getY(extractionData[i].w);
-                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-                
-                // 일치율(Score) 실시간 계산
-                if(currentRecipe && currentRecipe.length > 0) {
-                    let totalErr = 0; let count = 0;
-                    const maxRt = currentRecipe[currentRecipe.length-1].t;
-                    
-                    extractionData.forEach(d => {
-                        if(d.t > maxRt) return;
-                        let targetW = 0;
-                        for(let j=0; j<currentRecipe.length-1; j++) {
-                            if(d.t >= currentRecipe[j].t && d.t <= currentRecipe[j+1].t) {
-                                let ratio = (d.t - currentRecipe[j].t)/(currentRecipe[j+1].t - currentRecipe[j].t);
-                                targetW = currentRecipe[j].w + (currentRecipe[j+1].w - currentRecipe[j].w)*ratio;
-                                break;
-                            }
-                        }
-                        totalErr += Math.abs(d.w - targetW); count++;
+                let tempMatch = true;
+                if(checkedTemps.length > 0) {
+                    tempMatch = checkedTemps.some(cond => {
+                        const t = r.temp;
+                        if(cond === 'hot90' && t >= 90) return true;
+                        if(cond === 'hot80' && t >= 80 && t < 90) return true;
+                        if(cond === 'mid70' && t >= 70 && t < 80) return true;
+                        if(cond === 'low70' && t > 25 && t < 70) return true;
+                        if(cond === 'cold' && t <= 25) return true;
+                        return false;
                     });
-                    
-                    if(count > 0) {
-                        let avgErr = totalErr/count;
-                        let score = Math.max(0, 100 - (avgErr*4));
-                        const sEl = document.getElementById('score-val');
-                        sEl.textContent = score.toFixed(0);
-                        
-                        if(score >= 90) sEl.className = 'font-bold tabular-nums text-emerald-400';
-                        else if(score >= 70) sEl.className = 'font-bold tabular-nums text-yellow-400';
-                        else sEl.className = 'font-bold tabular-nums text-rose-400';
-                    }
                 }
+
+                return dripperMatch && tempMatch;
+            });
+        }
+
+        function renderRecipes() {
+            const allRecipes = getRecipes();
+            const filtered = filterRecipes(allRecipes);
+            
+            gridEl.innerHTML = '';
+            if(filtered.length === 0) {
+                gridEl.innerHTML = '<div class="col-span-full text-center py-10 text-zinc-500">조건에 맞는 레시피가 없습니다.</div>';
+                return;
             }
 
-            requestAnimationFrame(drawGraph);
+            filtered.forEach(recipe => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 group flex flex-col relative cursor-pointer';
+                // 클릭 시 스마트 추출 앱으로 이동 (파일 이름 매칭)
+                card.onclick = () => window.location.href = `Ttara-Pour.html?recipeId=${recipe.id}`;
+                
+                const timeStr = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].t + 's' : '-';
+                const maxWater = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].w : '-';
+                const path = generatePath(recipe.steps);
+                const color = recipe.color || '#6366f1';
+
+                card.innerHTML = `
+                    <div class="h-28 bg-zinc-900/50 relative overflow-hidden flex items-end p-2 border-b border-zinc-800">
+                        <div class="absolute inset-0 opacity-20" style="background: linear-gradient(180deg, transparent 0%, ${color} 100%);"></div>
+                        <svg class="w-full h-full absolute inset-0 drop-shadow-md" viewBox="0 0 100 50" preserveAspectRatio="none">
+                            <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="graph-line"></path>
+                        </svg>
+                        <div class="absolute top-2 right-2 bg-black/60 backdrop-blur rounded px-2 py-0.5 text-[10px] text-white font-mono border border-zinc-700">${timeStr}</div>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col">
+                        <h3 class="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-indigo-400 transition-colors">${recipe.title}</h3>
+                        <div class="text-xs text-zinc-400 mb-3">👤 ${recipe.author}</div>
+                        <div class="flex flex-wrap gap-1.5 mb-4">
+                            <span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] font-medium border border-zinc-700">${recipe.dripper}</span>
+                            <span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] font-medium border border-zinc-700">${recipe.beans}g : ${maxWater}g</span>
+                            <span class="px-2 py-0.5 border rounded text-[10px] font-medium" style="color:${color}; border-color:${color}40; background-color:${color}10">${recipe.temp}°C</span>
+                        </div>
+                        <div class="mt-auto pt-3 border-t border-zinc-800 flex justify-between items-center">
+                            <div class="text-xs text-zinc-500">❤️ ${recipe.likes || 0}</div>
+                            <button class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all shadow-lg">앱으로 가져오기</button>
+                        </div>
+                    </div>
+                `;
+                gridEl.appendChild(card);
+            });
         }
-        requestAnimationFrame(drawGraph);
+
+        // 필터 이벤트 바인딩
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', renderRecipes));
+        
+        window.resetFilters = () => {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            renderRecipes();
+        }
+
+        // 유튜브 AI 분석 로직
+        document.getElementById('btn-ai-extract').addEventListener('click', async () => {
+            const url = document.getElementById('yt-url').value;
+            const apiKey = document.getElementById('gemini-key').value;
+            
+            if (!url) return showToast('유튜브 링크를 입력해주세요.');
+            if (!apiKey) return showToast('Gemini API Key를 입력해주세요.');
+
+            const btn = document.getElementById('btn-ai-extract');
+            btn.textContent = '분석중...';
+            btn.disabled = true;
+            showToast("AI가 영상을 분석 중입니다... ☕ (약 10초 소요)");
+
+            const systemPrompt = `당신은 세계 최고의 바리스타 AI입니다. 주어진 유튜브 링크의 영상 내용에서 커피 추출 레시피를 분석하여 정확히 다음 JSON 형식으로만 응답하세요. 없는 정보는 적절한 푸어오버(V60) 레시피로 그럴싸하게 추론하세요.
+            {
+              "title": "레시피 제목 (영상 제목 기반)",
+              "author": "유튜버 이름 또는 채널명",
+              "dripper": "추출 기구 (예: Hario V60)",
+              "beans": 15,
+              "temp": 93,
+              "steps": [ {"t": 0, "w": 0}, {"t": 40, "w": 50}, {"t": 150, "w": 250} ]
+            }
+            시간(t)은 초 단위, 무게(w)는 누적 그람(g) 단위입니다. 마크다운 기호 없이 반드시 순수한 JSON 객체만 반환하세요.`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `다음 유튜브 영상에서 커피 레시피를 추출해줘: ${url}` }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error('API 호출 실패');
+                const result = await response.json();
+                let text = result.candidates[0].content.parts[0].text;
+                
+                // 마크다운 제거 처리
+                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const recipeData = JSON.parse(text);
+
+                if(recipeData.title) document.getElementById('f-title').value = recipeData.title;
+                if(recipeData.author) document.getElementById('f-author').value = recipeData.author;
+                if(recipeData.dripper) document.getElementById('f-dripper').value = recipeData.dripper;
+                if(recipeData.beans) document.getElementById('f-beans').value = recipeData.beans;
+                if(recipeData.temp) {
+                    const tInput = document.getElementById('f-temp');
+                    tInput.value = recipeData.temp;
+                    tInput.dispatchEvent(new Event('input')); // 색상 업데이트 트리거
+                }
+                if(recipeData.steps) {
+                    document.getElementById('f-steps').value = JSON.stringify(recipeData.steps, null, 2);
+                }
+                
+                showToast("✨ AI 분석 완료! 내용을 확인해주세요.");
+            } catch (error) {
+                console.error(error);
+                showToast("AI 분석에 실패했습니다. 키 또는 링크를 확인하세요.");
+            } finally {
+                btn.textContent = 'AI 분석';
+                btn.disabled = false;
+            }
+        });
+
+        // 새 레시피 등록
+        document.getElementById('recipe-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            let stepsParsed;
+            try {
+                stepsParsed = JSON.parse(document.getElementById('f-steps').value);
+                if (!Array.isArray(stepsParsed)) throw new Error();
+            } catch (err) {
+                return showToast('스텝(JSON) 형식이 잘못되었습니다.');
+            }
+
+            const temp = Number(document.getElementById('f-temp').value);
+            let color = '#6366f1';
+            if(temp >= 90) color = '#ef4444';
+            else if(temp >= 80) color = '#f97316';
+            else if(temp >= 70) color = '#eab308';
+            else color = '#3b82f6';
+
+            const newRecipe = {
+                id: 'id_' + Date.now(),
+                title: document.getElementById('f-title').value,
+                author: document.getElementById('f-author').value,
+                password: document.getElementById('f-pw').value,
+                dripper: document.getElementById('f-dripper').value,
+                beans: Number(document.getElementById('f-beans').value),
+                temp: temp,
+                steps: stepsParsed,
+                likes: 0,
+                color: color
+            };
+
+            const recipes = getRecipes();
+            recipes.unshift(newRecipe);
+            localStorage.setItem('buku_recipes', JSON.stringify(recipes));
+            
+            showToast('✅ 레시피가 커뮤니티에 등록되었습니다!');
+            document.getElementById('shareModal').close();
+            document.getElementById('recipe-form').reset();
+            
+            // 모달 초기 상태로 되돌리기
+            document.getElementById('modal-step-2').classList.add('hidden');
+            document.getElementById('modal-step-1').classList.remove('hidden');
+
+            renderRecipes();
+        });
+
+        // 초기 렌더링
+        renderRecipes();
     </script>
 </body>
 </html>
