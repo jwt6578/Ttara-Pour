@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ttara-Pour Smart App</title>
+    <title>Ttara-Pour Smart Brew</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #0f172a; color: #f8fafc; }
@@ -31,7 +31,7 @@
                 ◀ 커뮤니티로
             </button>
             <div>
-                <h1 class="text-lg md:text-xl font-bold text-white tracking-tight">Smart Brew App</h1>
+                <h1 class="text-lg md:text-xl font-bold text-white tracking-tight">Ttara-Pour</h1>
                 <div class="flex items-center gap-2 mt-0.5">
                     <span id="bt-status-dot" class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
                     <span id="bt-status-text" class="text-xs text-slate-400 font-medium">기기 미연결</span>
@@ -97,20 +97,39 @@
 
         <div class="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
             
+            <!-- 저울 제어 패널 (브랜드 선택 및 팝업 통합) -->
             <div class="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-4 shrink-0">
-                <h3 class="text-sm font-bold text-white mb-3">저울 하드웨어 제어</h3>
-                <p class="text-[10px] text-slate-400 mb-3 leading-tight">부쿠 울트라 스케일 전용 프로토콜 탑재 (XOR CheckSum 자동계산)</p>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-white">저울 하드웨어 제어</h3>
+                    <select id="scale-type-select" class="bg-slate-900 border border-slate-700 rounded text-xs text-white px-2 py-1 outline-none focus:border-indigo-500 transition-colors">
+                        <option value="bookoo">Bookoo (부쿠)</option>
+                        <option value="acaia">Acaia (아카이아)</option>
+                    </select>
+                </div>
+                <p class="text-[10px] text-slate-400 mb-3 leading-tight">선택한 저울 브랜드에 맞춰 프로토콜 명령이 자동 변환되어 전송됩니다.</p>
+                
                 <div class="grid grid-cols-2 gap-2 mb-3">
-                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 01 00 00">영점 (Tare)</button>
-                    <button class="cmd-btn bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 07 00 00">Tare & Timer Start</button>
-                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 05 00 00">타이머 Stop</button>
-                    <button class="cmd-btn bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors" data-cmd="03 0A 06 00 00">타이머 Reset</button>
+                    <button id="btn-ctrl-tare" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">영점 (Tare)</button>
+                    <button id="btn-ctrl-start" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/40 py-2 rounded-lg text-xs font-bold transition-colors">Tare & Start</button>
+                    <button id="btn-ctrl-stop" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Stop</button>
+                    <button id="btn-ctrl-reset" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Reset</button>
                 </div>
                 
-                <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800 flex items-center gap-3">
-                    <label class="text-xs font-bold text-slate-300 whitespace-nowrap">비프음 볼륨</label>
-                    <input type="range" id="volume-slider" min="0" max="5" value="3" class="w-full accent-indigo-500 bg-slate-700 rounded-lg appearance-none h-1.5 cursor-pointer">
-                    <span id="volume-display" class="text-xs text-slate-400 font-mono w-4">3</span>
+                <!-- 비프음 팝업 버튼 영역 -->
+                <div class="relative">
+                    <button id="btn-volume-popup" class="w-full bg-slate-800 border border-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg text-xs font-bold transition-all flex justify-center items-center gap-2">
+                        🔊 비프음 음량 설정
+                    </button>
+                    
+                    <!-- 팝업 패널 (기본 숨김) -->
+                    <div id="volume-popup-panel" class="hidden absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold text-white">비프음 크기 조절</span>
+                            <span id="volume-display" class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded font-mono font-bold">3</span>
+                        </div>
+                        <input type="range" id="volume-slider" min="0" max="5" value="3" class="w-full accent-indigo-500 bg-slate-900 rounded-lg appearance-none h-2 cursor-pointer">
+                        <p class="text-[9px] text-slate-400 mt-3 text-center">* Bookoo 저울 전용 (0: 음소거 ~ 5: 최대)</p>
+                    </div>
                 </div>
             </div>
 
@@ -151,6 +170,12 @@
         const recipeSelect = document.getElementById('recipe-select');
         const logTableBody = document.getElementById('log-table-body');
         const extTimeDisplay = document.getElementById('ext-time-display');
+
+        // 저울 및 볼륨 제어 UI 변수
+        let currentScaleType = 'bookoo';
+        const scaleTypeSelect = document.getElementById('scale-type-select');
+        const btnVolPopup = document.getElementById('btn-volume-popup');
+        const volPopupPanel = document.getElementById('volume-popup-panel');
 
         let bluetoothDevice = null;
         let scaleCharacteristic = null;
@@ -207,41 +232,99 @@
             if(r) currentRecipe = r.steps;
         });
 
-        // Bluetooth Commands
+        // ==========================================
+        // 저울 종류 및 명령어 제어 로직
+        // ==========================================
+        
+        // 부쿠 저울용 XOR 체크섬 계산
         function calcCheckSum(bytes) {
             let sum = 0;
             for (let i = 0; i < bytes.length; i++) sum ^= bytes[i];
             return sum;
         }
 
-        async function sendCommand(hexArrStr) {
-            if (!writeCharacteristic) return showToast('쓰기(Write) 권한이 없습니다.');
+        // 저울 변경 시 비프음 버튼 활성/비활성
+        scaleTypeSelect.addEventListener('change', (e) => {
+            currentScaleType = e.target.value;
+            if (currentScaleType === 'acaia') {
+                btnVolPopup.style.opacity = '0.3';
+                btnVolPopup.disabled = true;
+                volPopupPanel.classList.add('hidden');
+                showToast('아카이아는 비프음 설정을 지원하지 않습니다.');
+            } else {
+                btnVolPopup.style.opacity = '1';
+                btnVolPopup.disabled = false;
+            }
+        });
+
+        // 팝업 열기/닫기 처리
+        btnVolPopup.addEventListener('click', (e) => {
+            e.stopPropagation();
+            volPopupPanel.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!volPopupPanel.contains(e.target) && e.target !== btnVolPopup) {
+                volPopupPanel.classList.add('hidden');
+            }
+        });
+
+        // 볼륨 슬라이더 전송
+        document.getElementById('volume-slider').addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('volume-display').textContent = val;
+            const hexVal = val.toString(16).padStart(2, '0');
+            sendScaleCommandRaw(`03 0A 02 00 0${hexVal}`);
+        });
+
+        // 통합 명령어 전송 함수
+        async function sendScaleCommandRaw(hexStr) {
+            if (!writeCharacteristic) return showToast('기기가 연결되지 않았습니다.');
             try {
-                const parts = hexArrStr.split(' ').map(x => parseInt(x, 16));
-                const checkSum = calcCheckSum(parts);
-                const buffer = new Uint8Array([...parts, checkSum]);
+                const parts = hexStr.split(' ').map(x => parseInt(x, 16));
+                let buffer;
+                
+                // Bookoo일 경우에만 맨 끝에 체크섬을 붙여서 전송
+                if (currentScaleType === 'bookoo') {
+                    const checkSum = calcCheckSum(parts);
+                    buffer = new Uint8Array([...parts, checkSum]);
+                } else {
+                    // Acaia는 체크섬 연산 없이 원본 그대로 전송
+                    buffer = new Uint8Array(parts);
+                }
                 
                 if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(buffer);
                 else await writeCharacteristic.writeValue(buffer);
                 
-                showToast('명령 전송 완료');
             } catch(e) {
                 console.error(e);
             }
         }
 
-        document.querySelectorAll('.cmd-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => sendCommand(e.target.dataset.cmd));
-        });
+        // 상태별 명령어 매핑 및 전송
+        function execCommand(cmdType) {
+            let hexCmd = "";
+            if (currentScaleType === 'bookoo') {
+                if (cmdType === 'tare') hexCmd = "03 0A 01 00 00";
+                else if (cmdType === 'start') hexCmd = "03 0A 07 00 00"; // Tare & Start
+                else if (cmdType === 'stop') hexCmd = "03 0A 05 00 00";
+                else if (cmdType === 'reset') hexCmd = "03 0A 06 00 00";
+            } else if (currentScaleType === 'acaia') {
+                if (cmdType === 'tare') hexCmd = "EF DD 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00";
+                else if (cmdType === 'start') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Start
+                else if (cmdType === 'stop') hexCmd = "EF DD 0D 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Stop
+                else if (cmdType === 'reset') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Reset/Start 
+            }
+            if (hexCmd) sendScaleCommandRaw(hexCmd);
+        }
 
-        document.getElementById('volume-slider').addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            document.getElementById('volume-display').textContent = val;
-            const hexVal = val.toString(16).padStart(2, '0');
-            sendCommand(`03 0A 02 00 0${hexVal}`);
-        });
+        document.getElementById('btn-ctrl-tare').addEventListener('click', () => execCommand('tare'));
+        document.getElementById('btn-ctrl-start').addEventListener('click', () => execCommand('start'));
+        document.getElementById('btn-ctrl-stop').addEventListener('click', () => execCommand('stop'));
+        document.getElementById('btn-ctrl-reset').addEventListener('click', () => execCommand('reset'));
 
-        // Connection
+        // ==========================================
+        // 블루투스 연결
+        // ==========================================
         btnConnect.addEventListener('click', async () => {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
@@ -288,36 +371,68 @@
             if(isExtracting) btnExtraction.click();
         }
 
-        // Data Parsing
+        // ==========================================
+        // 데이터 파싱 (Bookoo & Acaia 지원)
+        // ==========================================
         function handleData(event) {
             const bytes = new Uint8Array(event.target.value.buffer);
-            if (bytes.length < 20 || bytes[0] !== 0x03 || bytes[1] !== 0x0B) return;
-            
-            const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
-            const timeSec = timeRaw / 1000;
-            
-            // 0x2D is '-' and 0x2B is '+'
-            const wSign = bytes[6] === 0x2D ? -1 : 1; 
-            const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
-            const weight = (weightRaw / 100) * wSign;
-            
-            const fSign = bytes[10] === 0x2D ? -1 : 1;
-            const flowRaw = (bytes[11] << 8) | bytes[12];
-            const flow = (flowRaw / 100) * fSign;
+            let weight = 0, flow = 0, timeSec = 0;
+            let isValid = false;
 
+            // 1. Bookoo 프로토콜 처리 (03 0B 로 시작)
+            if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
+                const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+                timeSec = timeRaw / 1000;
+                
+                const wSign = bytes[6] === 0x2D ? -1 : 1; 
+                const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
+                weight = (weightRaw / 100) * wSign;
+                
+                const fSign = bytes[10] === 0x2D ? -1 : 1;
+                const flowRaw = (bytes[11] << 8) | bytes[12];
+                flow = (flowRaw / 100) * fSign;
+                isValid = true;
+            } 
+            // 2. Acaia 프로토콜 기초 처리 (EF DD 로 시작)
+            else if (bytes[0] === 0xEF && bytes[1] === 0xDD && bytes.length >= 10) {
+                const view = new DataView(event.target.value.buffer);
+                try {
+                    // 아카이아 무게 데이터는 보통 5번 Offset에서 32bit Little Endian으로 들어옴
+                    let rawAcaia = view.getInt32(5, true); 
+                    weight = rawAcaia / 10; // 아카이아는 기본적으로 10으로 나누어 g 단위 표시
+                    
+                    // 아카이아는 타임스탬프가 다르게 오므로 로컬 시간 기반으로 대체 추적
+                    if(isExtracting) {
+                        if(extractionStartDevTime === -1) extractionStartDevTime = Date.now();
+                        timeSec = (Date.now() - extractionStartDevTime) / 1000;
+                    }
+                    isValid = true;
+                } catch(e) { return; }
+            }
+            
+            if (!isValid) return; // 알 수 없는 포맷 무시
+
+            // 디스플레이 업데이트
             displayWeight.textContent = weight.toFixed(1);
             displayFlow.textContent = flow.toFixed(1);
 
+            // 추출 기록 모드일 때
             if (isExtracting) {
-                if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
-                let relTime = timeSec - extractionStartDevTime;
+                let relTime = 0;
+                if (currentScaleType === 'bookoo') {
+                    if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
+                    relTime = timeSec - extractionStartDevTime;
+                } else {
+                    relTime = timeSec; // Acaia는 위에서 이미 상대시간으로 계산됨
+                }
+                
                 if (relTime < 0) relTime = 0;
                 
                 extTimeDisplay.textContent = relTime >= 60 ? `${Math.floor(relTime/60)}' ${(relTime%60).toFixed(1)}''` : `${relTime.toFixed(1)}''`;
                 extractionData.push({ t: relTime, w: weight, f: flow });
 
-                // Log table update
-                if(Math.random() < 0.2) { // log every ~5th packet to prevent lag
+                // 우측 로그 테이블 업데이트 (렉 방지 위해 확률적 출력)
+                if(Math.random() < 0.2) {
                     if(logTableBody.childElementCount === 1 && logTableBody.firstChild.textContent.includes('대기')) logTableBody.innerHTML = '';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `<td class="p-1 text-slate-500">${relTime.toFixed(1)}s</td><td class="p-1 text-right text-emerald-400">${weight.toFixed(1)}g</td>`;
@@ -327,27 +442,37 @@
             }
         }
 
-        // Extraction Button
+        // ==========================================
+        // 추출 버튼 토글
+        // ==========================================
         btnExtraction.addEventListener('click', async () => {
             isExtracting = !isExtracting;
             if (isExtracting) {
                 extractionData = [];
                 extractionStartDevTime = -1;
                 logTableBody.innerHTML = '';
-                await sendCommand("03 0A 07 00 00"); // Start & Tare
+                
+                execCommand('start'); // 브랜드에 맞춰 시작(Tare&Start) 전송
                 
                 btnExtraction.className = 'bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
                 extPulse.classList.remove('hidden'); extPulse.classList.add('recording-pulse');
                 extBtnIcon.textContent = '■'; extBtnText.textContent = '추출 기록 중지';
             } else {
-                await sendCommand("03 0A 05 00 00"); // Stop
+                execCommand('stop'); // 브랜드에 맞춰 정지 전송
+                
                 btnExtraction.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
                 extPulse.classList.add('hidden'); extPulse.classList.remove('recording-pulse');
                 extBtnIcon.textContent = '▶'; extBtnText.textContent = '추출 기록 시작 (동기화)';
             }
         });
 
-        // Graph Rendering
+        // ==========================================
+        // 그래프 렌더링
+        // ==========================================
+        function formatTime(t) {
+            return t >= 60 ? `${Math.floor(t/60)}' ${(t%60).toFixed(0)}''` : `${t.toFixed(0)}s`;
+        }
+
         function resizeCanvas() {
             if (canvas.parentElement) {
                 canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
@@ -363,20 +488,22 @@
             const h = canvas.height / window.devicePixelRatio;
             ctx.clearRect(0, 0, w, h);
             
-            const pL = 40, pR = 20, pT = 30, pB = 40;
+            const pL = 40, pR = 30, pT = 30, pB = 40;
             const dW = w - pL - pR;
             const dH = h - pT - pB;
 
             let maxT = 60; let maxW = 100; let maxF = 10;
             
+            // X, Y축 자동 스케일링 로직
             if (currentRecipe && currentRecipe.length > 0) {
                 maxT = currentRecipe[currentRecipe.length - 1].t + 30; // 30s margin
-                maxW = Math.ceil(Math.max(...currentRecipe.map(x => x.w)) / 10) * 10;
+                const recipeMaxW = Math.max(...currentRecipe.map(x => x.w));
+                maxW = Math.ceil(recipeMaxW / 10) * 10;
             }
             if (extractionData.length > 0) {
                 const actT = extractionData[extractionData.length - 1].t;
                 const actW = Math.max(...extractionData.map(x => x.w));
-                if (actT > maxT - 10) maxT = actT + 20;
+                if (actT > maxT - 20) maxT = actT + 20;
                 if (actW > maxW) maxW = Math.ceil(actW / 10) * 10;
                 maxF = Math.max(maxF, ...extractionData.map(x => x.f)) * 1.5;
             }
@@ -384,13 +511,14 @@
             const getX = (t) => pL + (t / maxT) * dW;
             const getY = (wg) => pT + dH - (wg / maxW) * dH;
 
-            // Grids
+            // 배경 Grid 그리기 (Y축 20단위, X축 30초 단위)
             ctx.font = '10px Inter'; ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
             ctx.beginPath(); ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 1;
+            
             for (let weight = 0; weight <= maxW; weight += 20) {
                 const y = getY(weight);
-                ctx.moveTo(pL, y); ctx.lineTo(w - pR, y);
-                ctx.fillText(weight + 'g', pL - 5, y);
+                ctx.moveTo(pL, y); ctx.lineTo(w - pR + 10, y);
+                ctx.fillText(weight + 'g', pL - 8, y);
             }
             ctx.stroke();
 
@@ -398,14 +526,14 @@
             ctx.beginPath();
             for (let t = 0; t <= maxT; t += 30) {
                 const x = getX(t);
-                ctx.moveTo(x, pT); ctx.lineTo(x, pT + dH);
-                const tStr = t >= 60 ? `${Math.floor(t/60)}'${t%60}''` : `${t}s`;
-                ctx.fillText(tStr, x, pT + dH + 5);
+                ctx.moveTo(x, pT - 10); ctx.lineTo(x, pT + dH);
+                ctx.fillText(formatTime(t), x, pT + dH + 8);
             }
             ctx.stroke();
 
-            // Recipe Guide
+            // 가이드 라인 렌더링
             if (currentRecipe && currentRecipe.length > 0) {
+                // 선 그리기
                 ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
                 for (let i = 0; i < currentRecipe.length; i++) {
                     const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
@@ -413,28 +541,28 @@
                 }
                 ctx.stroke(); ctx.setLineDash([]);
 
+                // 텍스트 & 마커
                 ctx.fillStyle = '#94a3b8';
                 for (let i = 1; i < currentRecipe.length; i++) {
                     const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
                     ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
                     
-                    const tStr = currentRecipe[i].t >= 60 ? `${Math.floor(currentRecipe[i].t/60)}'${currentRecipe[i].t%60}''` : `${currentRecipe[i].t}s`;
-                    
-                    // Draw text and line above marker
-                    ctx.beginPath(); ctx.moveTo(px, py-4); ctx.lineTo(px+10, py-15); ctx.stroke();
-                    ctx.fillText(`${tStr}/${currentRecipe[i].w}g`, px+10, py-25);
+                    // 타겟 텍스트 상단 배치
+                    ctx.font = '10px Inter';
+                    ctx.fillText(`${formatTime(currentRecipe[i].t)} / ${currentRecipe[i].w}g`, px, py - 18);
                 }
 
+                // 종료 시점 마커 (빨간선 하단 배치)
                 const endX = getX(currentRecipe[currentRecipe.length-1].t);
                 ctx.beginPath(); ctx.strokeStyle = 'rgba(244,63,94,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
                 ctx.moveTo(endX, pT); ctx.lineTo(endX, pT+dH); ctx.stroke(); ctx.setLineDash([]);
+                
                 ctx.fillStyle = '#f43f5e'; ctx.font = 'bold 11px Inter';
-                // Move finish text to bottom
-                ctx.fillText('🏁 추출 종료', endX, pT+dH-15); 
-                ctx.font = '10px Inter';
+                // 글씨를 X축 바닥 근처로 이동
+                ctx.fillText('🏁 추출 종료 타겟', endX, pT + dH - 15); 
             }
 
-            // Real Data
+            // 실제 추출 데이터 렌더링
             if (extractionData.length > 0) {
                 ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
                 for (let i = 0; i < extractionData.length; i++) {
@@ -443,10 +571,11 @@
                 }
                 ctx.stroke();
                 
-                // Calculate Score
+                // 일치율(Score) 실시간 계산
                 if(currentRecipe && currentRecipe.length > 0) {
                     let totalErr = 0; let count = 0;
                     const maxRt = currentRecipe[currentRecipe.length-1].t;
+                    
                     extractionData.forEach(d => {
                         if(d.t > maxRt) return;
                         let targetW = 0;
@@ -465,6 +594,7 @@
                         let score = Math.max(0, 100 - (avgErr*4));
                         const sEl = document.getElementById('score-val');
                         sEl.textContent = score.toFixed(0);
+                        
                         if(score >= 90) sEl.className = 'font-bold tabular-nums text-emerald-400';
                         else if(score >= 70) sEl.className = 'font-bold tabular-nums text-yellow-400';
                         else sEl.className = 'font-bold tabular-nums text-rose-400';
