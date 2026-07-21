@@ -15,6 +15,11 @@
             -webkit-tap-highlight-color: transparent;
         }
         
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
         .glass-panel {
             background: rgba(24, 24, 27, 0.6);
             backdrop-filter: blur(12px);
@@ -47,6 +52,11 @@
             margin-left: -6px; border-width: 6px; border-style: solid;
             border-color: rgba(39, 39, 42, 0.95) transparent transparent transparent;
         }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden relative selection:bg-indigo-500/30">
@@ -68,12 +78,7 @@
         </div>
         
         <div class="flex items-center gap-2 shrink-0">
-            <!-- 저울 종류 선택 -->
-            <select id="scaleType" class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] sm:text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 hidden sm:block">
-                <option value="bookoo">Bookoo Scale</option>
-                <option value="acaia">Acaia Scale</option>
-            </select>
-            
+            <!-- 저울 종류 선택 UI 제거 (자동으로 감지됨) -->
             <button id="btnConnect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-colors">
                 연결하기
             </button>
@@ -87,7 +92,7 @@
         
         <!-- 왼쪽(또는 상단): 컨트롤 패널 -->
         <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30">
-            <!-- 수치 디스플레이 (모바일에서 폰트 축소) -->
+            <!-- 수치 디스플레이 -->
             <div class="flex flex-col items-center lg:items-start justify-center flex-1 gap-2 lg:gap-4">
                 <div class="flex flex-col items-center lg:items-start">
                     <span class="text-zinc-500 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1 sm:mb-2">Weight</span>
@@ -115,7 +120,6 @@
             <!-- 하단 버튼 컨트롤 -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-4 lg:mt-8 relative">
                 
-                <!-- 비프음 설정 (부쿠 전용 팝업) -->
                 <div class="relative flex justify-center">
                     <button id="btnVolPopup" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-800 disabled:opacity-50">
                         <span class="text-lg sm:text-xl">🔊</span>
@@ -151,14 +155,93 @@
                 <canvas id="brewChart" class="w-full h-full"></canvas>
             </div>
         </section>
-
     </main>
 
-    <!-- 토스트 메시지 -->
-    <div id="toast" class="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-50 pointer-events-none text-xs sm:text-sm font-medium whitespace-nowrap">메시지</div>
+    <!-- 기록 요약 및 공유 모달 -->
+    <dialog id="postBrewModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-2xl m-auto overflow-hidden relative z-50">
+        <div class="p-4 sm:p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 sticky top-0 z-10">
+            <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">🏁 추출 완료! 기록을 공유할까요?</h2>
+            <button onclick="document.getElementById('postBrewModal').close()" class="text-zinc-400 hover:text-white p-2 rounded-lg bg-zinc-800/80">✖</button>
+        </div>
+        
+        <div class="p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 h-full max-h-[75vh] overflow-y-auto">
+            
+            <!-- 프리뷰 차트 및 마커 기능 -->
+            <div class="bg-zinc-950 border border-zinc-800 p-3 sm:p-4 rounded-xl flex flex-col gap-3">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="text-xs font-bold text-zinc-400">나의 추출 그래프 요약</h3>
+                    <button id="btnAutoMarker" class="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/50 px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors flex items-center gap-1">
+                        <span>📍</span> 스파이크 자동 마커 변환
+                    </button>
+                </div>
+                <!-- 커서 모양 변경으로 클릭 가능함 안내 -->
+                <div class="h-32 sm:h-40 w-full relative cursor-crosshair">
+                    <canvas id="previewChart" class="w-full h-full"></canvas>
+                </div>
+                <p class="text-[10px] text-zinc-500 text-center">💡 팁: 그래프의 원하는 위치를 <strong>직접 터치(클릭)</strong>하여 추출 단계 마커를 수동으로 추가/삭제할 수도 있습니다.</p>
+            </div>
+
+            <!-- 메타데이터 입력 폼 -->
+            <form id="share-form" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">레시피 이름 (프로파일 명)</label>
+                    <input type="text" id="f-title" placeholder="예: 단맛을 끌어올리는 케냐 AA" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">기여자 (이름)</label>
+                        <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물 (도구)</label>
+                        <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두 종류 (국가/블렌드)</label>
+                        <input type="text" id="f-origin" list="origin-list" placeholder="예: 에티오피아, 블렌드" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                        <datalist id="origin-list">
+                            <option value="블렌드 (Blend)"></option>
+                            <option value="에티오피아 (Ethiopia)"></option>
+                            <option value="콜롬비아 (Colombia)"></option>
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호 (삭제용)</label>
+                        <input type="password" id="f-pw" placeholder="비밀번호" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 의도 (설명)</label>
+                    <textarea id="f-desc" rows="2" placeholder="이 레시피가 타겟팅하는 맛이나 주의사항을 적어주세요." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 resize-none"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두량 (g)</label>
+                        <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 온도 (°C)</label>
+                        <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                    </div>
+                </div>
+
+                <div class="mt-2 flex gap-2 sm:gap-3">
+                    <button type="button" onclick="document.getElementById('postBrewModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-3 sm:px-4 py-3 rounded-xl text-sm font-bold transition-colors">저장 안함</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">클라우드에 공유하기</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <div id="toast" class="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-[100] pointer-events-none text-xs sm:text-sm font-medium whitespace-nowrap">메시지</div>
 
     <script>
-        // DOM 요소
         const btnConnect = document.getElementById('btnConnect');
         const btnDisconnect = document.getElementById('btnDisconnect');
         const btnTare = document.getElementById('btnTare');
@@ -173,13 +256,15 @@
         const displayTime = document.getElementById('displayTime');
         const toast = document.getElementById('toast');
         
-        const scaleTypeSelect = document.getElementById('scaleType');
         const btnVolPopup = document.getElementById('btnVolPopup');
         const volPopup = document.getElementById('volPopup');
         const volSlider = document.getElementById('volSlider');
 
         const scoreOverlay = document.getElementById('scoreOverlay');
         const scoreValue = document.getElementById('scoreValue');
+        
+        const postBrewModal = document.getElementById('postBrewModal');
+        const btnAutoMarker = document.getElementById('btnAutoMarker');
 
         // 상태 변수
         let bluetoothDevice;
@@ -187,32 +272,37 @@
         let writeCharacteristic;
         let isConnected = false;
         let isExtracting = false;
-        let currentScaleType = 'bookoo';
+        let currentScaleType = 'bookoo'; // 기본값 (자동 갱신됨)
         
         let extractionData = [];
         let extractionStartDevTime = -1;
         let currentRecipe = null;
+        let customMarkers = []; // 추출 단계 구분을 위한 마커 시간값 저장 배열
         
-        // 유량 계산용 (Acaia)
+        // 유량 계산용 (아카이아)
         let smoothedFlow = 0;
         let lastCalcTime = 0;
         let lastCalcWeight = 0;
 
         const canvas = document.getElementById('brewChart');
         const ctx = canvas.getContext('2d');
+        const pCanvas = document.getElementById('previewChart');
+        const pCtx = pCanvas.getContext('2d');
 
-        // 모바일 모드 대응 캔버스 리사이징 처리
         function resizeCanvas() {
-            const parent = canvas.parentElement;
-            canvas.width = parent.clientWidth;
-            canvas.height = parent.clientHeight;
-            drawGraph();
+            if (canvas.parentElement) {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+                drawGraph();
+            }
+            if (pCanvas.parentElement && postBrewModal.open) {
+                pCanvas.width = pCanvas.parentElement.clientWidth;
+                pCanvas.height = pCanvas.parentElement.clientHeight;
+                drawPreviewGraph();
+            }
         }
         window.addEventListener('resize', resizeCanvas);
 
-        // ==========================================
-        // 초기화 (레시피 로드)
-        // ==========================================
         function init() {
             const params = new URLSearchParams(window.location.search);
             const recipeId = params.get('recipeId');
@@ -222,34 +312,25 @@
                 currentRecipe = recipes.find(r => r.id === recipeId);
                 if (currentRecipe) {
                     document.getElementById('recipe-title').textContent = currentRecipe.title;
-                    
-                    // 레시피 디테일(도구, 원두, 용량, 온도) 표시
                     const infoEl = document.getElementById('recipe-info');
-                    infoEl.textContent = `${currentRecipe.dripper} | ${currentRecipe.origin || '원두미상'} | ${currentRecipe.beans}g | ${currentRecipe.temp}°C`;
+                    infoEl.textContent = `${currentRecipe.dripper} | ${currentRecipe.origin || '블렌드'} | ${currentRecipe.beans}g | ${currentRecipe.temp}°C`;
                     infoEl.classList.remove('hidden');
-                    
                     scoreOverlay.classList.remove('hidden');
+                    
+                    document.getElementById('f-beans').value = currentRecipe.beans;
+                    document.getElementById('f-temp').value = currentRecipe.temp;
+                    document.getElementById('f-dripper').value = currentRecipe.dripper;
                 }
             }
-
-            // 모바일용 저울 셀렉터 설정 반영
-            const dName = scaleTypeSelect.value;
-            handleScaleTypeChange();
-
-            // 캔버스 초기화
             setTimeout(resizeCanvas, 100);
         }
 
-        // ==========================================
-        // UI 인터랙션
-        // ==========================================
         function showToast(msg) {
             toast.textContent = msg;
             toast.style.opacity = '1';
             setTimeout(() => toast.style.opacity = '0', 3000);
         }
 
-        // 비프음 팝업 토글
         btnVolPopup.addEventListener('click', (e) => {
             e.stopPropagation();
             volPopup.classList.toggle('active');
@@ -260,7 +341,6 @@
             }
         });
 
-        // 60초 이상일 때 분' 초" 포맷팅
         function formatTime(seconds) {
             if (seconds < 60) return `${seconds.toFixed(1)}"`;
             const m = Math.floor(seconds / 60);
@@ -268,21 +348,6 @@
             return `${m}' ${s.padStart(4, '0')}"`;
         }
 
-        function handleScaleTypeChange() {
-            currentScaleType = scaleTypeSelect.value;
-            if(currentScaleType === 'acaia') {
-                btnVolPopup.disabled = true;
-                btnVolPopup.classList.add('opacity-30', 'cursor-not-allowed');
-            } else {
-                btnVolPopup.disabled = false;
-                btnVolPopup.classList.remove('opacity-30', 'cursor-not-allowed');
-            }
-        }
-        scaleTypeSelect.addEventListener('change', handleScaleTypeChange);
-
-        // ==========================================
-        // 블루투스 프로토콜 (Bookoo & Acaia)
-        // ==========================================
         function calcCheckSum(bytesArray) {
             let sum = 0;
             for (let i = 0; i < bytesArray.length; i++) sum ^= bytesArray[i];
@@ -299,7 +364,6 @@
             }
         }
 
-        // Bookoo 명령
         async function sendBookooTare() { await sendCommand([0x03, 0x0A, 0x01, 0x00, 0x00, 0x08]); }
         async function sendBookooTimerStart() { await sendCommand([0x03, 0x0A, 0x04, 0x00, 0x00, 0x0A]); }
         async function sendBookooTimerStop() { await sendCommand([0x03, 0x0A, 0x05, 0x00, 0x00, 0x0D]); }
@@ -309,15 +373,11 @@
             await sendCommand(base);
         }
 
-        // Acaia 명령 (Heartbeat, Tare, Timer)
         async function sendAcaiaHeartbeat() { await sendCommand([0xef, 0xdd, 0x00, 0x02, 0x00, 0x02, 0x00]); }
         async function sendAcaiaTare() { await sendCommand([0xef, 0xdd, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStart() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStop() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
 
-        // ==========================================
-        // 블루투스 연결 관리
-        // ==========================================
         btnConnect.addEventListener('click', async () => {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
@@ -342,21 +402,24 @@
                     if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
                 }
 
-                // 기기 이름 기반 자동 인식 로직 적용
+                // 기기 이름 기반 자동 인식
                 const dName = (bluetoothDevice.name || '').toLowerCase();
                 if (dName.includes('acaia') || dName.includes('lunar') || dName.includes('pearl') || dName.includes('cinco') || dName.includes('pyxis')) {
-                    scaleTypeSelect.value = 'acaia';
+                    currentScaleType = 'acaia';
+                    btnVolPopup.disabled = true;
+                    btnVolPopup.classList.add('opacity-30', 'cursor-not-allowed');
                 } else {
-                    scaleTypeSelect.value = 'bookoo';
+                    currentScaleType = 'bookoo';
+                    btnVolPopup.disabled = false;
+                    btnVolPopup.classList.remove('opacity-30', 'cursor-not-allowed');
                 }
-                scaleTypeSelect.dispatchEvent(new Event('change'));
 
                 isConnected = true;
                 statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
                 statusText.textContent = bluetoothDevice.name || '저울 연결됨';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
-                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 및 연결 완료!`);
+                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 완료!`);
                 
                 if(currentScaleType === 'acaia') {
                     setInterval(() => { if(isConnected) sendAcaiaHeartbeat(); }, 2000);
@@ -377,15 +440,11 @@
             showToast('저울과 연결이 끊어졌습니다.');
         }
 
-        // ==========================================
-        // 데이터 파싱 (Bookoo & Acaia 지원)
-        // ==========================================
         function handleData(event) {
             const bytes = new Uint8Array(event.target.value.buffer);
             let weight = 0, flow = 0, timeSec = 0;
             let isValid = false;
 
-            // 1. Bookoo 프로토콜 (03 0B)
             if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
                 const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
                 timeSec = timeRaw / 1000;
@@ -399,7 +458,6 @@
                 flow = (flowRaw / 100) * fSign;
                 isValid = true;
             } 
-            // 2. Acaia 프로토콜 (EF DD)
             else if (bytes[0] === 0xEF && bytes[1] === 0xDD && bytes.length >= 10) {
                 const view = new DataView(event.target.value.buffer);
                 try {
@@ -418,7 +476,7 @@
             
             if (!isValid) return; 
 
-            // 아카이아 유량 수동 계산 로직
+            // 아카이아 유량 스무딩 계산
             let nowTime = Date.now();
             if (lastCalcTime === 0) lastCalcTime = nowTime;
             let dt = (nowTime - lastCalcTime) / 1000;
@@ -427,7 +485,7 @@
                 if (dt >= 0.2) {
                     let rawFlow = (weight - lastCalcWeight) / dt;
                     if (rawFlow < 0) rawFlow = 0;
-                    flow = (smoothedFlow * 0.7) + (rawFlow * 0.3); // 지수이동평균(EMA)
+                    flow = (smoothedFlow * 0.7) + (rawFlow * 0.3);
                     smoothedFlow = flow;
                     lastCalcTime = nowTime;
                     lastCalcWeight = weight;
@@ -436,11 +494,9 @@
                 }
             }
 
-            // 디스플레이 업데이트
             displayWeight.textContent = weight.toFixed(1);
             displayFlow.textContent = flow.toFixed(1);
 
-            // 추출 기록 모드일 때
             if (isExtracting) {
                 if (currentScaleType === 'bookoo') {
                     if (extractionStartDevTime === -1 && timeSec > 0) extractionStartDevTime = timeSec;
@@ -459,13 +515,8 @@
             }
         }
 
-        // ==========================================
-        // 그래프 렌더링 시스템
-        // ==========================================
         function drawGraph() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // X축, Y축 최댓값 설정
             let maxTime = 30;
             let maxWeight = 50;
 
@@ -473,140 +524,86 @@
                 maxTime = Math.max(maxTime, currentRecipe.steps[currentRecipe.steps.length - 1].t + 30);
                 maxWeight = Math.max(maxWeight, currentRecipe.steps[currentRecipe.steps.length - 1].w);
             }
-
             if (extractionData.length > 0) {
                 maxTime = Math.max(maxTime, extractionData[extractionData.length - 1].t + 10);
                 maxWeight = Math.max(maxWeight, ...extractionData.map(d => d.w));
             }
             
-            // Y축 20 단위로 올림 처리
             maxWeight = Math.ceil(maxWeight / 20) * 20;
 
-            const padX = 40; 
-            const padY = 40;
-            const w = canvas.width - padX * 2;
-            const h = canvas.height - padY * 2;
+            const padX = 40; const padY = 40;
+            const w = canvas.width - padX * 2; const h = canvas.height - padY * 2;
+            const getX = (t) => padX + (t / maxTime) * w;
+            const getY = (wt) => padY + h - (wt / maxWeight) * h;
 
-            function getX(t) { return padX + (t / maxTime) * w; }
-            function getY(wt) { return padY + h - (wt / maxWeight) * h; }
+            // Grids
+            ctx.lineWidth = 1; ctx.strokeStyle = '#3f3f46'; ctx.fillStyle = '#a1a1aa';
+            ctx.font = '10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
 
-            // 그리드 그리기 (X축: 30초 간격, Y축: 20g 간격)
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = '#3f3f46';
-            ctx.fillStyle = '#a1a1aa';
-            ctx.font = '10px Inter';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-
-            // X축 (시간)
             for (let t = 0; t <= maxTime; t += 30) {
                 const x = getX(t);
                 ctx.beginPath(); ctx.moveTo(x, padY); ctx.lineTo(x, padY + h); ctx.stroke();
                 ctx.fillText(formatTime(t).replace(/"/g, ''), x, padY + h + 8);
             }
 
-            // Y축 (무게)
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
             for (let wt = 0; wt <= maxWeight; wt += 20) {
                 const y = getY(wt);
                 ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(padX + w, y); ctx.stroke();
                 ctx.fillText(wt + 'g', padX - 8, y);
             }
 
-            // 1. 레시피 가이드 (배경)
+            // Recipe Guide
             if (currentRecipe && currentRecipe.steps.length > 0) {
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#6366f1'; 
-                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 3; ctx.strokeStyle = '#6366f1'; ctx.setLineDash([5, 5]);
                 ctx.beginPath();
-                
                 currentRecipe.steps.forEach((s, i) => {
-                    if (i === 0) ctx.moveTo(getX(s.t), getY(s.w));
-                    else ctx.lineTo(getX(s.t), getY(s.w));
+                    if (i === 0) ctx.moveTo(getX(s.t), getY(s.w)); else ctx.lineTo(getX(s.t), getY(s.w));
                 });
-                ctx.stroke();
-                ctx.setLineDash([]); // 대시 초기화
+                ctx.stroke(); ctx.setLineDash([]);
 
-                // 타겟 범례 및 마커 그리기
                 ctx.fillStyle = '#6366f1';
                 currentRecipe.steps.forEach((s, i) => {
-                    const x = getX(s.t);
-                    const y = getY(s.w);
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // 마지막 점이 아니면 바로 위에 범례 표시
+                    const x = getX(s.t); const y = getY(s.w);
+                    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
                     if (i > 0 && i < currentRecipe.steps.length - 1) {
-                        ctx.fillStyle = '#a5b4fc';
-                        ctx.font = 'bold 11px Inter';
-                        ctx.textAlign = 'center';
+                        ctx.fillStyle = '#a5b4fc'; ctx.font = 'bold 11px Inter'; ctx.textAlign = 'center';
                         ctx.fillText(`${s.t}s / ${s.w}g`, x, y - 12);
                     }
                 });
 
-                // 추출 완료선 (마지막 스텝)
                 const finalStep = currentRecipe.steps[currentRecipe.steps.length - 1];
                 const fx = getX(finalStep.t);
-                
-                ctx.strokeStyle = '#ef4444'; // 빨간 점선
-                ctx.lineWidth = 2;
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath();
-                ctx.moveTo(fx, padY);
-                ctx.lineTo(fx, padY + h);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                // 완료선 하단 텍스트
-                ctx.fillStyle = '#fca5a5';
-                ctx.textAlign = 'center';
-                ctx.font = 'bold 12px Inter';
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+                ctx.beginPath(); ctx.moveTo(fx, padY); ctx.lineTo(fx, padY + h); ctx.stroke(); ctx.setLineDash([]);
+                ctx.fillStyle = '#fca5a5'; ctx.textAlign = 'center'; ctx.font = 'bold 12px Inter';
                 ctx.fillText('🏁 추출 종료 타겟', fx, padY + h - 15);
             }
 
-            // 2. 실시간 추출 데이터 그리기
+            // Real Data
             if (extractionData.length > 0) {
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = '#10b981'; 
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
+                ctx.lineWidth = 4; ctx.strokeStyle = '#10b981'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
                 ctx.beginPath();
-                
                 extractionData.forEach((d, i) => {
-                    if (i === 0) ctx.moveTo(getX(d.t), getY(d.w));
-                    else ctx.lineTo(getX(d.t), getY(d.w));
+                    if (i === 0) ctx.moveTo(getX(d.t), getY(d.w)); else ctx.lineTo(getX(d.t), getY(d.w));
                 });
                 ctx.stroke();
                 
-                // 마지막 현재 위치 표시 (Glow)
                 const last = extractionData[extractionData.length - 1];
-                ctx.fillStyle = '#10b981';
-                ctx.shadowColor = '#10b981';
-                ctx.shadowBlur = 10;
-                ctx.beginPath();
-                ctx.arc(getX(last.t), getY(last.w), 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0; // 초기화
+                ctx.fillStyle = '#10b981'; ctx.shadowColor = '#10b981'; ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(getX(last.t), getY(last.w), 6, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
             }
         }
 
-        // 일치율 점수 계산
         function calculateScore() {
             if (!currentRecipe || extractionData.length === 0) return;
             const lastData = extractionData[extractionData.length - 1];
-            
-            // 현재 시간에 해당하는 가이드의 목표 무게 찾기 (선형 보간)
             let targetW = 0;
             const steps = currentRecipe.steps;
             
-            if (lastData.t <= steps[0].t) {
-                targetW = steps[0].w;
-            } else if (lastData.t >= steps[steps.length-1].t) {
-                targetW = steps[steps.length-1].w;
-            } else {
+            if (lastData.t <= steps[0].t) { targetW = steps[0].w; } 
+            else if (lastData.t >= steps[steps.length-1].t) { targetW = steps[steps.length-1].w; } 
+            else {
                 for (let i = 0; i < steps.length - 1; i++) {
                     if (lastData.t >= steps[i].t && lastData.t <= steps[i+1].t) {
                         const ratio = (lastData.t - steps[i].t) / (steps[i+1].t - steps[i].t);
@@ -617,34 +614,26 @@
             }
             
             const diff = Math.abs(lastData.w - targetW);
-            let score = 100 - (diff * 2); // 1g 오차당 2점 감점
+            let score = 100 - (diff * 2); 
             if (score < 0) score = 0;
             
             scoreValue.textContent = score.toFixed(0) + '%';
-            
             if (score >= 90) scoreValue.className = "text-lg sm:text-2xl font-black text-emerald-400";
             else if (score >= 70) scoreValue.className = "text-lg sm:text-2xl font-black text-yellow-400";
             else scoreValue.className = "text-lg sm:text-2xl font-black text-red-400";
         }
 
-        // ==========================================
-        // 컨트롤 버튼 이벤트
-        // ==========================================
         btnTare.addEventListener('click', () => {
             if (currentScaleType === 'bookoo') sendBookooTare();
             else sendAcaiaTare();
             showToast('영점을 맞췄습니다.');
         });
 
-        volSlider.addEventListener('change', (e) => {
-            const level = parseInt(e.target.value);
-            sendBookooBeep(level);
-        });
-
         btnRecord.addEventListener('click', () => {
             isExtracting = !isExtracting;
             if (isExtracting) {
                 extractionData = [];
+                customMarkers = []; // 마커 초기화
                 extractionStartDevTime = -1;
                 
                 if (currentRecipe) {
@@ -652,7 +641,6 @@
                     scoreValue.className = "text-lg sm:text-2xl font-black text-zinc-500";
                 }
                 
-                // 타이머 시작 명령
                 if (currentScaleType === 'bookoo') sendBookooTimerStart();
                 else sendAcaiaTimerStart();
 
@@ -662,7 +650,6 @@
                 btnRecord.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
                 showToast('추출(기록)을 시작합니다!');
             } else {
-                // 타이머 정지 명령
                 if (currentScaleType === 'bookoo') sendBookooTimerStop();
                 else sendAcaiaTimerStop();
 
@@ -671,7 +658,177 @@
                 btnRecord.classList.replace('bg-rose-600', 'bg-indigo-600');
                 btnRecord.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
                 showToast('추출이 종료되었습니다.');
+
+                // 5개 이상의 데이터가 찍혔다면 추출을 유효하다고 판단하고 모달 오픈
+                if (extractionData.length > 5) {
+                    setTimeout(() => {
+                        postBrewModal.showModal();
+                        setTimeout(resizeCanvas, 100);
+                    }, 500);
+                }
             }
+        });
+
+        // ==========================================
+        // 프리뷰 캔버스 마커 지정 및 스파이크 제거
+        // ==========================================
+        
+        // 1. 자동 스파이크 감지 및 마커 변환 (버튼 클릭)
+        btnAutoMarker.addEventListener('click', () => {
+            if (extractionData.length < 3) return;
+            let detected = 0;
+            const threshold = 3; // 3g 이상의 순간적인 튐을 스파이크(물리버튼)로 간주
+
+            for (let i = 1; i < extractionData.length - 1; i++) {
+                let prev = extractionData[i-1].w;
+                let curr = extractionData[i].w;
+                let next = extractionData[i+1].w;
+
+                // 뾰족한 위쪽/아래쪽 스파이크 감지
+                if ((curr - prev > threshold && curr - next > threshold) || (prev - curr > threshold && next - curr > threshold)) {
+                    // 마커 배열에 해당 시간값(t) 저장
+                    customMarkers.push(extractionData[i].t);
+                    // 선을 평탄화하여 시각적 노이즈 제거
+                    extractionData[i].w = (prev + next) / 2;
+                    detected++;
+                }
+            }
+
+            // 중복 방지 및 시간순 정렬
+            customMarkers = [...new Set(customMarkers)].sort((a,b) => a-b);
+            drawGraph(); 
+            drawPreviewGraph();
+            showToast(`총 ${detected}개의 물리 버튼 입력을 마커로 변환했습니다!`);
+        });
+
+        // 2. 수동 마커 추가/삭제 (그래프 캔버스 직접 터치/클릭)
+        pCanvas.addEventListener('click', (e) => {
+            if (extractionData.length === 0) return;
+            
+            // 클릭한 X 좌표를 시간(t)으로 변환
+            const rect = pCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const maxTime = extractionData[extractionData.length - 1].t;
+            const clickedTime = (x / pCanvas.width) * maxTime;
+            
+            // 오차범위 2초 내에 기존 마커가 있다면 삭제, 없다면 새 마커 추가 (토글 방식)
+            const existingIdx = customMarkers.findIndex(m => Math.abs(m - clickedTime) < 2);
+            if (existingIdx >= 0) {
+                customMarkers.splice(existingIdx, 1);
+                showToast('마커를 삭제했습니다.');
+            } else {
+                customMarkers.push(clickedTime);
+                showToast('새로운 마커를 추가했습니다.');
+            }
+            
+            customMarkers.sort((a,b) => a-b);
+            drawPreviewGraph();
+        });
+
+        // 프리뷰 그래프 그리기 함수
+        function drawPreviewGraph() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            if (extractionData.length === 0) return;
+
+            const maxTime = extractionData[extractionData.length - 1].t;
+            const maxWeight = Math.max(...extractionData.map(d => d.w));
+            
+            const w = pCanvas.width;
+            const h = pCanvas.height;
+            const getX = (t) => (t / maxTime) * w;
+            const getY = (wt) => h - (wt / (maxWeight * 1.1)) * h;
+
+            // 저장된 마커 그리기 (빨간 점선 및 텍스트)
+            customMarkers.forEach((mt, idx) => {
+                const mx = getX(mt);
+                pCtx.beginPath();
+                pCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)'; // Rose-500
+                pCtx.lineWidth = 2;
+                pCtx.setLineDash([4, 4]);
+                pCtx.moveTo(mx, 0);
+                pCtx.lineTo(mx, h);
+                pCtx.stroke();
+                pCtx.setLineDash([]);
+                
+                pCtx.fillStyle = '#f43f5e';
+                pCtx.font = 'bold 10px Inter';
+                pCtx.textAlign = 'center';
+                pCtx.fillText(`Marker ${idx+1}`, mx, 12);
+            });
+
+            // 추출 선 그리기
+            pCtx.lineWidth = 3; 
+            pCtx.strokeStyle = '#10b981'; 
+            pCtx.lineCap = 'round'; 
+            pCtx.lineJoin = 'round';
+            pCtx.beginPath();
+            extractionData.forEach((d, i) => {
+                if (i === 0) pCtx.moveTo(getX(d.t), getY(d.w)); 
+                else pCtx.lineTo(getX(d.t), getY(d.w));
+            });
+            pCtx.stroke();
+        }
+
+        // 고주파 Raw 데이터를 1초 단위로 압축
+        function compressToSteps(data) {
+            if(data.length === 0) return [];
+            let steps = [];
+            let lastT = -1;
+            
+            data.forEach(d => {
+                let currentT = Math.round(d.t);
+                if (currentT > lastT) {
+                    steps.push({ t: currentT, w: Math.round(d.w) });
+                    lastT = currentT;
+                } else if (steps.length > 0) {
+                    steps[steps.length - 1].w = Math.round(d.w);
+                }
+            });
+            
+            if(steps.length > 1 && steps[steps.length-1].w === 0 && steps[steps.length-2].w > 0) {
+                steps.pop();
+            }
+            return steps;
+        }
+
+        document.getElementById('share-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const compressedSteps = compressToSteps(extractionData);
+            if (compressedSteps.length < 2) return showToast('데이터가 너무 짧아 저장할 수 없습니다.');
+
+            const temp = Number(document.getElementById('f-temp').value);
+            let color = '#6366f1';
+            if(temp >= 90) color = '#ef4444';
+            else if(temp >= 80) color = '#f97316';
+            else if(temp >= 70) color = '#eab308';
+            else color = '#3b82f6';
+
+            // 새 레시피 객체에 지정한 마커(customMarkers)도 함께 저장하여 메인 페이지 등에서 시각화에 활용 가능하도록 함
+            const newRecipe = {
+                id: 'id_' + Date.now(),
+                title: document.getElementById('f-title').value,
+                author: document.getElementById('f-author').value,
+                password: document.getElementById('f-pw').value,
+                dripper: document.getElementById('f-dripper').value,
+                origin: document.getElementById('f-origin').value || '블렌드',
+                desc: document.getElementById('f-desc').value,
+                beans: Number(document.getElementById('f-beans').value),
+                temp: temp,
+                steps: compressedSteps, 
+                markers: customMarkers, // <- 추가됨
+                likes: 0,
+                color: color
+            };
+
+            let recipes = JSON.parse(localStorage.getItem('buku_recipes') || '[]');
+            recipes.unshift(newRecipe);
+            localStorage.setItem('buku_recipes', JSON.stringify(recipes));
+            
+            showToast('✅ 추출 기록이 공유되었습니다! 커뮤니티로 이동합니다.');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
         });
 
         // 시작
