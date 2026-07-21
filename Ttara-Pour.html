@@ -33,7 +33,7 @@
         .popup-panel {
             display: none;
             position: absolute;
-            bottom: 110%;
+            bottom: 110%; /* 버튼 바로 위에 뜨도록 */
             left: 50%;
             transform: translateX(-50%);
             background: rgba(39, 39, 42, 0.95);
@@ -50,6 +50,28 @@
             content: ''; position: absolute; top: 100%; left: 50%;
             margin-left: -6px; border-width: 6px; border-style: solid;
             border-color: rgba(39, 39, 42, 0.95) transparent transparent transparent;
+        }
+
+        /* 비프음 전용 우측 팝업 */
+        .vol-popup {
+            display: none;
+            position: absolute;
+            top: 120%; 
+            right: 0;
+            background: rgba(39, 39, 42, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(82, 82, 91, 0.5);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            width: max-content;
+        }
+        .vol-popup.active { display: flex; flex-direction: column; gap: 8px; }
+        .vol-popup::after {
+            content: ''; position: absolute; bottom: 100%; right: 12px;
+            border-width: 6px; border-style: solid;
+            border-color: transparent transparent rgba(39, 39, 42, 0.95) transparent;
         }
 
         dialog::backdrop {
@@ -87,8 +109,22 @@
 
     <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
-        <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30">
-            <div class="flex flex-col items-center lg:items-start justify-center flex-1 gap-2 lg:gap-4">
+        <!-- 왼쪽(또는 상단): 컨트롤 패널 -->
+        <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30 relative">
+            
+            <!-- 비프음 설정 (우측 상단 둥근 버튼) -->
+            <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40">
+                <button id="btnVolPopup" class="w-8 h-8 sm:w-10 sm:h-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-colors border border-zinc-700 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed">
+                    <span class="text-sm sm:text-base">🔊</span>
+                </button>
+                <div id="volPopup" class="vol-popup">
+                    <span class="text-[10px] font-bold text-zinc-400 text-center">볼륨 (0~5)</span>
+                    <input type="range" id="volSlider" min="0" max="5" value="2" class="w-24 accent-indigo-500">
+                </div>
+            </div>
+
+            <!-- 수치 디스플레이 (모바일에서 폰트 축소) -->
+            <div class="flex flex-col items-center lg:items-start justify-center flex-1 gap-2 lg:gap-4 mt-8 sm:mt-4">
                 <div class="flex flex-col items-center lg:items-start">
                     <span class="text-zinc-500 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1 sm:mb-2">Weight</span>
                     <div class="flex items-baseline gap-2">
@@ -112,38 +148,24 @@
                 </div>
             </div>
 
+            <!-- 하단 버튼 컨트롤 -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-4 lg:mt-8 relative">
-                <div class="relative flex justify-center">
-                    <button id="btnVolPopup" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-800 disabled:opacity-50">
-                        <span class="text-lg sm:text-xl">🔊</span>
-                        <span class="text-[10px] sm:text-xs font-bold">비프음</span>
-                    </button>
-                    <div id="volPopup" class="popup-panel">
-                        <span class="text-[10px] font-bold text-zinc-400 text-center">볼륨 설정 (0~5)</span>
-                        <input type="range" id="volSlider" min="0" max="5" value="2" class="w-32 accent-indigo-500">
-                    </div>
-                </div>
-
-                <button id="btnTare" class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50">
+                <button id="btnTare" disabled class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl">⚖️</span>
-                    <span class="text-[10px] sm:text-xs font-bold">영점(Tare)</span>
+                    <span class="text-[10px] sm:text-xs font-bold">영점</span>
                 </button>
-                <button id="btnRecord" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors shadow-lg active:bg-indigo-700 disabled:opacity-50">
+                <button id="btnReset" disabled class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="text-lg sm:text-xl">⏱️</span>
+                    <span class="text-[10px] sm:text-xs font-bold">시간초기화</span>
+                </button>
+                <button id="btnRecord" disabled class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors shadow-lg active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl" id="recordIcon">▶️</span>
                     <span class="text-[10px] sm:text-xs font-bold" id="recordText">추출 시작</span>
                 </button>
             </div>
         </section>
 
-        <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
-            <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 glass-panel px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
-                <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
-                <span id="scoreValue" class="text-lg sm:text-2xl font-black text-zinc-500">--%</span>
-            </div>
-            <div class="absolute inset-0 p-2 sm:p-4 lg:p-8">
-                <canvas id="brewChart" class="w-full h-full"></canvas>
-            </div>
-        </section>
+        <!-- 오른쪽(또는 하단): 그래프 캔버스 -->
     </main>
 
     <!-- 기록 요약 및 공유 모달 -->
@@ -271,9 +293,11 @@
     <div id="toast" class="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-[100] pointer-events-none text-xs sm:text-sm font-medium whitespace-nowrap">메시지</div>
 
     <script>
+        // DOM 요소
         const btnConnect = document.getElementById('btnConnect');
         const btnDisconnect = document.getElementById('btnDisconnect');
         const btnTare = document.getElementById('btnTare');
+        const btnReset = document.getElementById('btnReset');
         const btnRecord = document.getElementById('btnRecord');
         const recordIcon = document.getElementById('recordIcon');
         const recordText = document.getElementById('recordText');
@@ -385,30 +409,30 @@
             return sum;
         }
 
-        async function sendCommand(cmdArray) {
-            if (!isConnected || !writeCharacteristic) return showToast('저울이 연결되지 않았습니다.');
-            try {
-                const data = new Uint8Array(cmdArray);
-                await writeCharacteristic.writeValue(data);
-            } catch (e) {
-                console.error('명령 전송 실패:', e);
-            }
-        }
-
+        // Bookoo 명령
         async function sendBookooTare() { await sendCommand([0x03, 0x0A, 0x01, 0x00, 0x00, 0x08]); }
         async function sendBookooTimerStart() { await sendCommand([0x03, 0x0A, 0x04, 0x00, 0x00, 0x0A]); }
         async function sendBookooTimerStop() { await sendCommand([0x03, 0x0A, 0x05, 0x00, 0x00, 0x0D]); }
+        async function sendBookooTimerReset() { await sendCommand([0x03, 0x0A, 0x06, 0x00, 0x00, 0x0F]); }
         async function sendBookooBeep(level) { 
             const base = [0x03, 0x0A, 0x02, 0x00, level];
             base.push(calcCheckSum(base));
             await sendCommand(base);
         }
 
+        // Acaia 명령 (Heartbeat, Tare, Timer)
         async function sendAcaiaHeartbeat() { await sendCommand([0xef, 0xdd, 0x00, 0x02, 0x00, 0x02, 0x00]); }
         async function sendAcaiaTare() { await sendCommand([0xef, 0xdd, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStart() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStop() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
+        async function sendAcaiaTimerReset() { 
+            await sendAcaiaTimerStop();
+            setTimeout(sendAcaiaTimerStop, 200); // 2번 보내서 리셋 유도
+        }
 
+        // ==========================================
+        // 블루투스 연결 관리
+        // ==========================================
         btnConnect.addEventListener('click', async () => {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
@@ -447,9 +471,15 @@
                 isConnected = true;
                 statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
                 statusText.textContent = bluetoothDevice.name || '저울 연결됨';
+                
+                // 연결 시 버튼 활성화
+                btnTare.disabled = false;
+                btnReset.disabled = false;
+                btnRecord.disabled = false;
+
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
-                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 완료!`);
+                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 및 연결 완료!`);
                 
                 if(currentScaleType === 'acaia') {
                     setInterval(() => { if(isConnected) sendAcaiaHeartbeat(); }, 2000);
@@ -465,26 +495,20 @@
             isConnected = false;
             statusDot.className = 'w-2 h-2 rounded-full bg-zinc-600';
             statusText.textContent = '블루투스 연결 대기중';
+            
+            // 연결 해제 시 버튼 비활성화
+            btnTare.disabled = true;
+            btnReset.disabled = true;
+            btnRecord.disabled = true;
+
             btnConnect.classList.remove('hidden');
             btnDisconnect.classList.add('hidden');
             showToast('저울과 연결이 끊어졌습니다.');
         }
 
-        function handleData(event) {
-            const bytes = new Uint8Array(event.target.value.buffer);
-            let weight = 0, flow = 0, timeSec = 0;
-            let isValid = false;
-
-            if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
-                const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
-                timeSec = timeRaw / 1000;
-                
-                const wSign = bytes[6] === 0x2D ? -1 : 1; 
-                const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
-                weight = (weightRaw / 100) * wSign;
-                
-                const fSign = bytes[10] === 0x2D ? -1 : 1;
-                const flowRaw = (bytes[11] << 8) | bytes[12];
+        // ==========================================
+        // 데이터 파싱 (Bookoo & Acaia 지원)
+        // ==========================================
                 flow = (flowRaw / 100) * fSign;
                 isValid = true;
             } 
@@ -499,13 +523,7 @@
                         timeSec = (Date.now() - extractionStartDevTime) / 1000;
                     } else {
                         timeSec = Date.now() / 1000;
-                    }
-                    isValid = true;
-                } catch(e) { return; }
-            }
-            
-            if (!isValid) return; 
-
+            // 아카이아 유량 스무딩 계산
             let nowTime = Date.now();
             if (lastCalcTime === 0) lastCalcTime = nowTime;
             let dt = (nowTime - lastCalcTime) / 1000;
@@ -523,13 +541,20 @@
                 }
             }
 
+            // 대기 상태일 때 저울의 현재 시간 표시 동기화 (Bookoo 전용)
+            if (currentScaleType === 'bookoo' && !isExtracting) {
+                displayTime.textContent = formatTime(timeSec);
+            }
+
+            // --- 저울 본체 타이머 자동 감지 로직 (Bookoo 전용) ---
             if (currentScaleType === 'bookoo') {
                 if (timeSec > 0 && lastBookooTime === 0 && !isExtracting) {
-                    showToast('⏱️ 저울 타이머 작동 감지: 기록 시작!');
+                    showToast('⏱️ 저울 타이머 작동 감지: 자동 기록을 시작합니다!');
                     toggleRecordState();
+                    extractionStartDevTime = 0; // 이미 시간이 흐르고 있다면 그 시간부터 차트에 반영
                 }
                 else if (timeSec === 0 && lastBookooTime > 0 && isExtracting) {
-                    showToast('🛑 저울 타이머 리셋 감지: 기록 종료');
+                    showToast('🛑 저울 타이머 리셋 감지: 기록을 종료합니다.');
                     toggleRecordState();
                 }
                 lastBookooTime = timeSec;
@@ -540,12 +565,11 @@
 
             if (isExtracting) {
                 if (currentScaleType === 'bookoo') {
-                    if (extractionStartDevTime === -1 && timeSec > 0) extractionStartDevTime = timeSec;
-                    if (extractionStartDevTime !== -1) {
-                        let diffTime = timeSec - extractionStartDevTime;
-                        displayTime.textContent = formatTime(diffTime);
-                        extractionData.push({ t: diffTime, w: weight });
-                    }
+                    if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
+                    let diffTime = timeSec - extractionStartDevTime;
+                    if (diffTime < 0) diffTime = 0;
+                    displayTime.textContent = formatTime(diffTime);
+                    extractionData.push({ t: diffTime, w: weight });
                 } else {
                     displayTime.textContent = formatTime(timeSec);
                     extractionData.push({ t: timeSec, w: weight });
@@ -673,28 +697,28 @@
                         break;
                     }
                 }
-            }
-            
-            const diff = Math.abs(lastData.w - targetW);
-            let score = 100 - (diff * 2); 
-            if (score < 0) score = 0;
-            
-            currentFinalScore = Math.floor(score); // 모달 저장용으로 업데이트
-            scoreValue.textContent = currentFinalScore + '%';
-            
-            if (score >= 90) scoreValue.className = "text-lg sm:text-2xl font-black text-emerald-400";
-            else if (score >= 70) scoreValue.className = "text-lg sm:text-2xl font-black text-yellow-400";
-            else scoreValue.className = "text-lg sm:text-2xl font-black text-red-400";
-        }
-
+        // ==========================================
+        // 컨트롤 버튼 이벤트
+        // ==========================================
         btnTare.addEventListener('click', () => {
             if (currentScaleType === 'bookoo') sendBookooTare();
             else sendAcaiaTare();
             showToast('영점을 맞췄습니다.');
         });
-        
+
+        btnReset.addEventListener('click', () => {
+            if (currentScaleType === 'bookoo') sendBookooTimerReset();
+            else sendAcaiaTimerReset();
+            showToast('시간을 초기화했습니다.');
+            if (isExtracting) {
+                toggleRecordState(); // 시간이 리셋되면 기록도 종료
+            }
+            displayTime.textContent = "0' 00.0\"";
+        });
+
         volSlider.addEventListener('change', (e) => {
-            sendBookooBeep(parseInt(e.target.value));
+            const level = parseInt(e.target.value);
+            sendBookooBeep(level);
         });
 
         function toggleRecordState() {
