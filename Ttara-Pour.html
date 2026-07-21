@@ -59,6 +59,7 @@
             </button>
             <div class="flex flex-col">
                 <h1 id="recipe-title" class="text-sm sm:text-xl font-bold tracking-tight text-white line-clamp-1">Free Brew (자유 추출)</h1>
+                <div id="recipe-info" class="text-[10px] sm:text-xs text-indigo-300 font-medium hidden mt-0.5 mb-0.5"></div>
                 <div class="flex items-center gap-2 text-[10px] sm:text-xs text-zinc-400">
                     <div id="statusDot" class="w-2 h-2 rounded-full bg-zinc-600"></div>
                     <span id="statusText">블루투스 연결 대기중</span>
@@ -221,6 +222,12 @@
                 currentRecipe = recipes.find(r => r.id === recipeId);
                 if (currentRecipe) {
                     document.getElementById('recipe-title').textContent = currentRecipe.title;
+                    
+                    // 레시피 디테일(도구, 원두, 용량, 온도) 표시
+                    const infoEl = document.getElementById('recipe-info');
+                    infoEl.textContent = `${currentRecipe.dripper} | ${currentRecipe.origin || '원두미상'} | ${currentRecipe.beans}g | ${currentRecipe.temp}°C`;
+                    infoEl.classList.remove('hidden');
+                    
                     scoreOverlay.classList.remove('hidden');
                 }
             }
