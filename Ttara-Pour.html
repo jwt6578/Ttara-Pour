@@ -15,11 +15,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
-
         .glass-panel {
             background: rgba(24, 24, 27, 0.6);
             backdrop-filter: blur(12px);
@@ -30,6 +25,7 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* 팝업 스타일 */
         .popup-panel {
             display: none;
             position: absolute;
@@ -52,28 +48,6 @@
             border-color: rgba(39, 39, 42, 0.95) transparent transparent transparent;
         }
 
-        /* 비프음 전용 우측 팝업 */
-        .vol-popup {
-            display: none;
-            position: absolute;
-            top: 120%; 
-            right: 0;
-            background: rgba(39, 39, 42, 0.95);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(82, 82, 91, 0.5);
-            padding: 12px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-            z-index: 50;
-            width: max-content;
-        }
-        .vol-popup.active { display: flex; flex-direction: column; gap: 8px; }
-        .vol-popup::after {
-            content: ''; position: absolute; bottom: 100%; right: 12px;
-            border-width: 6px; border-style: solid;
-            border-color: transparent transparent rgba(39, 39, 42, 0.95) transparent;
-        }
-
         dialog::backdrop {
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(8px);
@@ -82,6 +56,7 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden relative selection:bg-indigo-500/30">
 
+    <!-- 상단 네비게이션 헤더 -->
     <header class="flex justify-between items-center p-3 sm:p-5 border-b border-zinc-800 bg-black shrink-0 z-40 relative">
         <div class="flex items-center gap-2 sm:gap-3">
             <button onclick="window.location.href='index.html'" class="p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition-colors">
@@ -98,6 +73,12 @@
         </div>
         
         <div class="flex items-center gap-2 shrink-0">
+            <!-- 백그라운드에서 강제 변경하기 위한 숨겨진 Select -->
+            <select id="scaleType" class="hidden">
+                <option value="bookoo">Bookoo Scale</option>
+                <option value="acaia">Acaia Scale</option>
+            </select>
+            
             <button id="btnConnect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-colors">
                 연결하기
             </button>
@@ -108,21 +89,22 @@
     </header>
 
     <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
         <!-- 왼쪽(또는 상단): 컨트롤 패널 -->
         <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30 relative">
             
-            <!-- 비프음 설정 (우측 상단 둥근 버튼) -->
+            <!-- 비프음 설정 아이콘 버튼 -->
             <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40">
-                <button id="btnVolPopup" class="w-8 h-8 sm:w-10 sm:h-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-colors border border-zinc-700 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed">
+                <button id="btnVolPopup" disabled class="w-8 h-8 sm:w-10 sm:h-10 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-colors border border-zinc-700 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed">
                     <span class="text-sm sm:text-base">🔊</span>
                 </button>
-                <div id="volPopup" class="vol-popup">
+                <div id="volPopup" class="popup-panel !bottom-auto !top-[120%] !left-auto !right-0 !transform-none !-translate-x-0">
                     <span class="text-[10px] font-bold text-zinc-400 text-center">볼륨 (0~5)</span>
                     <input type="range" id="volSlider" min="0" max="5" value="2" class="w-24 accent-indigo-500">
                 </div>
             </div>
 
-            <!-- 수치 디스플레이 (모바일에서 폰트 축소) -->
+            <!-- 수치 디스플레이 -->
             <div class="flex flex-col items-center lg:items-start justify-center flex-1 gap-2 lg:gap-4 mt-8 sm:mt-4">
                 <div class="flex flex-col items-center lg:items-start">
                     <span class="text-zinc-500 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1 sm:mb-2">Weight</span>
@@ -147,7 +129,7 @@
                 </div>
             </div>
 
-            <!-- 하단 버튼 컨트롤 (초기에는 disabled 상태) -->
+            <!-- 하단 3버튼 컨트롤 -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-4 lg:mt-8 relative">
                 <button id="btnTare" disabled class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl">⚖️</span>
@@ -155,7 +137,7 @@
                 </button>
                 <button id="btnReset" disabled class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl">⏱️</span>
-                    <span class="text-[10px] sm:text-xs font-bold">시간초기화</span>
+                    <span class="text-[10px] sm:text-xs font-bold">초기화</span>
                 </button>
                 <button id="btnRecord" disabled class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors shadow-lg active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl" id="recordIcon">▶️</span>
@@ -166,7 +148,7 @@
 
         <!-- 오른쪽(또는 하단): 그래프 캔버스 -->
         <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
-            <!-- 가이드 점수 오버레이 -->
+            <!-- 가이드 점수 오버레이 (레시피 모드일 때만 보임) -->
             <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 glass-panel px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
                 <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
                 <span id="scoreValue" class="text-lg sm:text-2xl font-black text-zinc-500">--%</span>
@@ -178,7 +160,7 @@
         </section>
     </main>
 
-    <!-- 기록 요약 및 공유 모달 -->
+    <!-- 추출 요약 모달 -->
     <dialog id="postBrewModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-2xl m-auto overflow-hidden relative z-50">
         <div class="p-4 sm:p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 sticky top-0 z-10">
             <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">🏁 추출 완료! 기록을 공유할까요?</h2>
@@ -283,12 +265,13 @@
 
                 <div class="mt-2 flex gap-2 sm:gap-3">
                     <button type="button" onclick="document.getElementById('postBrewModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-3 sm:px-4 py-3 rounded-xl text-sm font-bold transition-colors">저장 안함</button>
-                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">새 레시피로 공유</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25">클라우드에 공유하기</button>
                 </div>
             </form>
         </div>
     </dialog>
 
+    <!-- 마커 이름 입력용 팝업 모달 -->
     <dialog id="markerPromptModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-5 w-[90%] max-w-xs m-auto z-[60]">
         <h3 class="text-sm font-bold mb-3 text-rose-400">📍 새 마커 추가</h3>
         <p class="text-[11px] text-zinc-400 mb-4 leading-tight">해당 시점의 추출 단계나 메모를 입력하세요.<br>(예: 1차 푸어, 교반, 얼음 투입)</p>
@@ -318,6 +301,7 @@
         const displayTime = document.getElementById('displayTime');
         const toast = document.getElementById('toast');
         
+        const scaleTypeSelect = document.getElementById('scaleType');
         const btnVolPopup = document.getElementById('btnVolPopup');
         const volPopup = document.getElementById('volPopup');
         const volSlider = document.getElementById('volSlider');
@@ -413,8 +397,19 @@
             return `${m}' ${s.padStart(4, '0')}"`;
         }
 
+        scaleTypeSelect.addEventListener('change', () => {
+            currentScaleType = scaleTypeSelect.value;
+            if(currentScaleType === 'acaia') {
+                btnVolPopup.disabled = true;
+                btnVolPopup.classList.add('opacity-30', 'cursor-not-allowed');
+            } else {
+                btnVolPopup.disabled = false;
+                btnVolPopup.classList.remove('opacity-30', 'cursor-not-allowed');
+            }
+        });
+
         // ==========================================
-        // 블루투스 프로토콜 (Bookoo & Acaia)
+        // 블루투스 프로토콜
         // ==========================================
         function calcCheckSum(bytesArray) {
             let sum = 0;
@@ -428,7 +423,7 @@
                 const data = new Uint8Array(cmdArray);
                 if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(data);
                 else await writeCharacteristic.writeValue(data);
-            } catch (e) { console.error('명령 전송 실패:', e); }
+            } catch (e) {}
         }
 
         async function sendBookooTare() { await sendCommand([0x03, 0x0A, 0x01, 0x00, 0x00, 0x08]); }
@@ -451,9 +446,9 @@
         }
 
         // ==========================================
-        // 블루투스 연결 관리
+        // 블루투스 연결 관리 (재시도 로직 포함)
         // ==========================================
-        btnConnect.addEventListener('click', async () => {
+        async function connectWithRetry(retries = 1) {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -461,7 +456,18 @@
                 });
 
                 bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                const server = await bluetoothDevice.gatt.connect();
+                
+                let server = null;
+                for (let i = 0; i <= retries; i++) {
+                    try {
+                        server = await bluetoothDevice.gatt.connect();
+                        break; 
+                    } catch (err) {
+                        if (i === retries) throw err; 
+                        console.warn(`GATT 연결 실패, ${i + 1}번째 재시도 중...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
                 
                 let service;
                 try { service = await server.getPrimaryService(0x0ffe); } 
@@ -477,26 +483,23 @@
                     if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
                 }
 
+                // 기기 이름 기반 자동 인식 로직 적용
                 const dName = (bluetoothDevice.name || '').toLowerCase();
                 if (dName.includes('acaia') || dName.includes('lunar') || dName.includes('pearl') || dName.includes('cinco') || dName.includes('pyxis')) {
-                    currentScaleType = 'acaia';
-                    btnVolPopup.disabled = true;
-                    btnVolPopup.classList.add('opacity-30', 'cursor-not-allowed');
+                    scaleTypeSelect.value = 'acaia';
                 } else {
-                    currentScaleType = 'bookoo';
-                    btnVolPopup.disabled = false;
-                    btnVolPopup.classList.remove('opacity-30', 'cursor-not-allowed');
+                    scaleTypeSelect.value = 'bookoo';
                 }
+                scaleTypeSelect.dispatchEvent(new Event('change'));
 
-                isConnected = true;
-                statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
-                statusText.textContent = bluetoothDevice.name || '저울 연결됨';
-                
                 // 연결 시 버튼 활성화
                 btnTare.disabled = false;
                 btnReset.disabled = false;
                 btnRecord.disabled = false;
 
+                isConnected = true;
+                statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                statusText.textContent = bluetoothDevice.name || '저울 연결됨';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
                 showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 및 연결 완료!`);
@@ -504,11 +507,14 @@
                 if(currentScaleType === 'acaia') {
                     setInterval(() => { if(isConnected) sendAcaiaHeartbeat(); }, 2000);
                 }
-            } catch (error) {
-                showToast('연결 실패: ' + error.message);
-            }
-        });
 
+            } catch (error) {
+                console.error('Connection Error:', error);
+                showToast('연결 실패: 기기를 찾을 수 없거나 취소되었습니다.');
+            }
+        }
+
+        btnConnect.addEventListener('click', () => { connectWithRetry(1); });
         btnDisconnect.addEventListener('click', () => { if (bluetoothDevice) bluetoothDevice.gatt.disconnect(); });
 
         function onDisconnected() {
@@ -516,7 +522,6 @@
             statusDot.className = 'w-2 h-2 rounded-full bg-zinc-600';
             statusText.textContent = '블루투스 연결 대기중';
             
-            // 연결 해제 시 버튼 비활성화
             btnTare.disabled = true;
             btnReset.disabled = true;
             btnRecord.disabled = true;
@@ -559,6 +564,7 @@
                         if(extractionStartDevTime === -1) extractionStartDevTime = Date.now();
                         timeSec = (Date.now() - extractionStartDevTime) / 1000;
                     } else {
+                        // 대기 상태일 때도 현재 기기가 돌고 있는지 확인 불가하므로 폰 시간
                         timeSec = Date.now() / 1000;
                     }
                     isValid = true;
@@ -567,7 +573,6 @@
             
             if (!isValid) return; 
 
-            // 아카이아 유량 스무딩 계산
             let nowTime = Date.now();
             if (lastCalcTime === 0) lastCalcTime = nowTime;
             let dt = (nowTime - lastCalcTime) / 1000;
@@ -585,17 +590,14 @@
                 }
             }
 
-            // 대기 상태일 때 저울의 현재 시간 표시 동기화 (Bookoo 전용)
-            if (currentScaleType === 'bookoo' && !isExtracting) {
-                displayTime.textContent = formatTime(timeSec);
-            }
-
-            // --- 저울 본체 타이머 자동 감지 로직 (Bookoo 전용) ---
+            // Bookoo 특수 로직: 저울 본체 버튼 동기화
             if (currentScaleType === 'bookoo') {
+                // 저울 자체 시간 동기화 표시
+                if (!isExtracting) displayTime.textContent = formatTime(timeSec);
+
                 if (timeSec > 0 && lastBookooTime === 0 && !isExtracting) {
                     showToast('⏱️ 저울 타이머 작동 감지: 자동 기록을 시작합니다!');
                     toggleRecordState();
-                    extractionStartDevTime = 0; 
                 }
                 else if (timeSec === 0 && lastBookooTime > 0 && isExtracting) {
                     showToast('🛑 저울 타이머 리셋 감지: 기록을 종료합니다.');
@@ -624,6 +626,9 @@
             }
         }
 
+        // ==========================================
+        // 캔버스 차트 렌더링
+        // ==========================================
         function drawGraph() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let maxTime = 30;
@@ -661,6 +666,7 @@
                 ctx.fillText(wt + 'g', padX - 8, y);
             }
 
+            // 가이드라인
             if (currentRecipe && currentRecipe.steps.length > 0) {
                 ctx.lineWidth = 3; ctx.strokeStyle = '#6366f1'; ctx.setLineDash([5, 5]);
                 ctx.beginPath();
@@ -711,6 +717,7 @@
                 ctx.setLineDash([]); 
             }
 
+            // 내 추출 선 그리기
             if (extractionData.length > 0) {
                 ctx.lineWidth = 4; ctx.strokeStyle = '#10b981'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
                 ctx.beginPath();
@@ -755,6 +762,9 @@
             else scoreValue.className = "text-lg sm:text-2xl font-black text-red-400";
         }
 
+        // ==========================================
+        // 컨트롤 버튼 이벤트
+        // ==========================================
         btnTare.addEventListener('click', () => {
             if (currentScaleType === 'bookoo') sendBookooTare();
             else sendAcaiaTare();
@@ -838,7 +848,9 @@
             toggleRecordState();
         });
 
-        // 탭 전환 이벤트
+        // ==========================================
+        // 탭 및 모달 인터랙션
+        // ==========================================
         document.getElementById('tab-follower').addEventListener('click', () => {
             document.getElementById('follower-form').classList.remove('hidden');
             document.getElementById('share-form').classList.add('hidden');
@@ -852,7 +864,6 @@
             document.getElementById('tab-follower').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg text-zinc-400 hover:text-white transition-colors';
         });
 
-        // 별점 인터랙션
         document.querySelectorAll('.star').forEach(star => {
             star.addEventListener('click', (e) => {
                 const val = parseInt(e.target.dataset.val);
@@ -867,11 +878,13 @@
             });
         });
 
-        // 1. 자동 마커
+        // ==========================================
+        // 프리뷰 캔버스 마커 지정 및 스파이크 제거
+        // ==========================================
         btnAutoMarker.addEventListener('click', () => {
             if (extractionData.length < 3) return;
             let detected = 0;
-            const threshold = 3;
+            const threshold = 3; 
 
             for (let i = 1; i < extractionData.length - 1; i++) {
                 let prev = extractionData[i-1].w;
@@ -892,7 +905,6 @@
             showToast(`총 ${detected}개의 물리 버튼 입력을 마커로 변환했습니다!`);
         });
 
-        // 2. 수동 마커 (터치)
         pCanvas.addEventListener('click', (e) => {
             if (extractionData.length === 0) return;
             
@@ -920,12 +932,14 @@
         document.getElementById('btn-marker-cancel').addEventListener('click', () => {
             document.getElementById('markerPromptModal').close();
         });
+        
         document.getElementById('btn-marker-save').addEventListener('click', () => {
             const label = document.getElementById('marker-label-input').value.trim() || '마커';
             customMarkers.push({ t: tempMarkerTime, label: label });
             customMarkers.sort((a,b) => (typeof a === 'object' ? a.t : a) - (typeof b === 'object' ? b.t : b));
             document.getElementById('markerPromptModal').close();
             drawPreviewGraph();
+            showToast(`'${label}' 마커를 추가했습니다.`);
         });
 
         function drawPreviewGraph() {
@@ -946,7 +960,7 @@
 
                 const mx = getX(mT);
                 pCtx.beginPath();
-                pCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)';
+                pCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)'; 
                 pCtx.lineWidth = 2;
                 pCtx.setLineDash([4, 4]);
                 pCtx.moveTo(mx, 0);
@@ -972,6 +986,9 @@
             pCtx.stroke();
         }
 
+        // ==========================================
+        // 폼 제출 로직 (압축 및 저장)
+        // ==========================================
         function compressToSteps(data) {
             if(data.length === 0) return [];
             let steps = [];
@@ -993,13 +1010,13 @@
             return steps;
         }
 
-        // 팔로워 폼 제출
         document.getElementById('follower-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const rating = parseInt(document.getElementById('f-follow-rating').value);
             if (rating === 0) return showToast('별점을 1개 이상 선택해주세요!');
             
             const author = document.getElementById('f-follow-author').value;
+            const compressedSteps = compressToSteps(extractionData);
             
             let recipes = JSON.parse(localStorage.getItem('buku_recipes') || '[]');
             let rIdx = recipes.findIndex(r => r.id === currentRecipe.id);
@@ -1007,10 +1024,13 @@
             if (rIdx >= 0) {
                 if (!recipes[rIdx].attempts) recipes[rIdx].attempts = [];
                 recipes[rIdx].attempts.unshift({
+                    id: 'att_' + Date.now(), 
                     author: author,
                     rating: rating,
                     score: currentFinalScore,
-                    date: Date.now()
+                    date: Date.now(),
+                    data: compressedSteps,   
+                    comments: []             
                 });
                 localStorage.setItem('buku_recipes', JSON.stringify(recipes));
                 showToast('✅ 이 레시피에 기록을 남겼습니다!');
@@ -1018,7 +1038,6 @@
             }
         });
 
-        // 새 레시피 폼 제출
         document.getElementById('share-form').addEventListener('submit', (e) => {
             e.preventDefault();
             
@@ -1053,7 +1072,7 @@
             recipes.unshift(newRecipe);
             localStorage.setItem('buku_recipes', JSON.stringify(recipes));
             
-            showToast('✅ 추출 기록이 공유되었습니다! 커뮤니티로 이동합니다.');
+            showToast('✅ 추출 기록이 새 레시피로 공유되었습니다!');
             setTimeout(() => { window.location.href = 'index.html'; }, 1500);
         });
 
