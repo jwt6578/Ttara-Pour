@@ -144,7 +144,7 @@
             <!-- 가이드 점수 오버레이 (레시피 모드일 때만 보임) -->
             <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 glass-panel px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
                 <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
-                <span id="scoreValue" class="text-lg sm:text-2xl font-black text-emerald-400">100%</span>
+                <span id="scoreValue" class="text-lg sm:text-2xl font-black text-zinc-500">--%</span>
             </div>
             
             <div class="absolute inset-0 p-2 sm:p-4 lg:p-8">
@@ -622,9 +622,9 @@
             
             scoreValue.textContent = score.toFixed(0) + '%';
             
-            if (score >= 90) scoreValue.className = "text-2xl font-black text-emerald-400";
-            else if (score >= 70) scoreValue.className = "text-2xl font-black text-yellow-400";
-            else scoreValue.className = "text-2xl font-black text-red-400";
+            if (score >= 90) scoreValue.className = "text-lg sm:text-2xl font-black text-emerald-400";
+            else if (score >= 70) scoreValue.className = "text-lg sm:text-2xl font-black text-yellow-400";
+            else scoreValue.className = "text-lg sm:text-2xl font-black text-red-400";
         }
 
         // ==========================================
@@ -646,6 +646,11 @@
             if (isExtracting) {
                 extractionData = [];
                 extractionStartDevTime = -1;
+                
+                if (currentRecipe) {
+                    scoreValue.textContent = '--%';
+                    scoreValue.className = "text-lg sm:text-2xl font-black text-zinc-500";
+                }
                 
                 // 타이머 시작 명령
                 if (currentScaleType === 'bookoo') sendBookooTimerStart();
