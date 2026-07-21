@@ -108,7 +108,6 @@
     </header>
 
     <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
         <!-- 왼쪽(또는 상단): 컨트롤 패널 -->
         <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30 relative">
             
@@ -148,7 +147,7 @@
                 </div>
             </div>
 
-            <!-- 하단 버튼 컨트롤 -->
+            <!-- 하단 버튼 컨트롤 (초기에는 disabled 상태) -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-4 lg:mt-8 relative">
                 <button id="btnTare" disabled class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="text-lg sm:text-xl">⚖️</span>
@@ -166,6 +165,17 @@
         </section>
 
         <!-- 오른쪽(또는 하단): 그래프 캔버스 -->
+        <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
+            <!-- 가이드 점수 오버레이 -->
+            <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 glass-panel px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
+                <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
+                <span id="scoreValue" class="text-lg sm:text-2xl font-black text-zinc-500">--%</span>
+            </div>
+            
+            <div class="absolute inset-0 p-2 sm:p-4 lg:p-8">
+                <canvas id="brewChart" class="w-full h-full"></canvas>
+            </div>
+        </section>
     </main>
 
     <!-- 기록 요약 및 공유 모달 -->
@@ -176,7 +186,6 @@
         </div>
         
         <div class="p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 h-full max-h-[75vh] overflow-y-auto">
-            
             <div class="bg-zinc-950 border border-zinc-800 p-3 sm:p-4 rounded-xl flex flex-col gap-3">
                 <div class="flex justify-between items-center flex-wrap gap-2">
                     <h3 class="text-xs font-bold text-zinc-400">나의 추출 그래프 요약</h3>
@@ -222,7 +231,7 @@
                 </div>
             </form>
 
-            <!-- 폼 2: 새 레시피로 독립 (기존 폼) -->
+            <!-- 폼 2: 새 레시피로 독립 -->
             <form id="share-form" class="flex flex-col gap-4">
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1.5">새 레시피 이름 (프로파일 명)</label>
@@ -319,6 +328,7 @@
         const postBrewModal = document.getElementById('postBrewModal');
         const btnAutoMarker = document.getElementById('btnAutoMarker');
 
+        // 상태 변수
         let bluetoothDevice;
         let scaleCharacteristic;
         let writeCharacteristic;
@@ -337,7 +347,7 @@
         let lastCalcWeight = 0;
         let lastBookooTime = 0; 
         
-        let currentFinalScore = 0; // 추출 완료 후 최종 점수 임시 저장용
+        let currentFinalScore = 0; 
 
         const canvas = document.getElementById('brewChart');
         const ctx = canvas.getContext('2d');
@@ -403,13 +413,24 @@
             return `${m}' ${s.padStart(4, '0')}"`;
         }
 
+        // ==========================================
+        // 블루투스 프로토콜 (Bookoo & Acaia)
+        // ==========================================
         function calcCheckSum(bytesArray) {
             let sum = 0;
             for (let i = 0; i < bytesArray.length; i++) sum ^= bytesArray[i];
             return sum;
         }
 
-        // Bookoo 명령
+        async function sendCommand(cmdArray) {
+            if (!isConnected || !writeCharacteristic) return;
+            try {
+                const data = new Uint8Array(cmdArray);
+                if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(data);
+                else await writeCharacteristic.writeValue(data);
+            } catch (e) { console.error('명령 전송 실패:', e); }
+        }
+
         async function sendBookooTare() { await sendCommand([0x03, 0x0A, 0x01, 0x00, 0x00, 0x08]); }
         async function sendBookooTimerStart() { await sendCommand([0x03, 0x0A, 0x04, 0x00, 0x00, 0x0A]); }
         async function sendBookooTimerStop() { await sendCommand([0x03, 0x0A, 0x05, 0x00, 0x00, 0x0D]); }
@@ -420,14 +441,13 @@
             await sendCommand(base);
         }
 
-        // Acaia 명령 (Heartbeat, Tare, Timer)
         async function sendAcaiaHeartbeat() { await sendCommand([0xef, 0xdd, 0x00, 0x02, 0x00, 0x02, 0x00]); }
         async function sendAcaiaTare() { await sendCommand([0xef, 0xdd, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStart() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerStop() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
         async function sendAcaiaTimerReset() { 
             await sendAcaiaTimerStop();
-            setTimeout(sendAcaiaTimerStop, 200); // 2번 보내서 리셋 유도
+            setTimeout(sendAcaiaTimerStop, 200); 
         }
 
         // ==========================================
@@ -509,9 +529,26 @@
         // ==========================================
         // 데이터 파싱 (Bookoo & Acaia 지원)
         // ==========================================
+        function handleData(event) {
+            const bytes = new Uint8Array(event.target.value.buffer);
+            let weight = 0, flow = 0, timeSec = 0;
+            let isValid = false;
+
+            // 1. Bookoo 프로토콜 (03 0B)
+            if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
+                const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+                timeSec = timeRaw / 1000;
+                
+                const wSign = bytes[6] === 0x2D ? -1 : 1; 
+                const weightRaw = (bytes[7] << 16) | (bytes[8] << 8) | bytes[9];
+                weight = (weightRaw / 100) * wSign;
+                
+                const fSign = bytes[10] === 0x2D ? -1 : 1;
+                const flowRaw = (bytes[11] << 8) | bytes[12];
                 flow = (flowRaw / 100) * fSign;
                 isValid = true;
             } 
+            // 2. Acaia 프로토콜 (EF DD)
             else if (bytes[0] === 0xEF && bytes[1] === 0xDD && bytes.length >= 10) {
                 const view = new DataView(event.target.value.buffer);
                 try {
@@ -523,6 +560,13 @@
                         timeSec = (Date.now() - extractionStartDevTime) / 1000;
                     } else {
                         timeSec = Date.now() / 1000;
+                    }
+                    isValid = true;
+                } catch(e) { return; }
+            }
+            
+            if (!isValid) return; 
+
             // 아카이아 유량 스무딩 계산
             let nowTime = Date.now();
             if (lastCalcTime === 0) lastCalcTime = nowTime;
@@ -551,7 +595,7 @@
                 if (timeSec > 0 && lastBookooTime === 0 && !isExtracting) {
                     showToast('⏱️ 저울 타이머 작동 감지: 자동 기록을 시작합니다!');
                     toggleRecordState();
-                    extractionStartDevTime = 0; // 이미 시간이 흐르고 있다면 그 시간부터 차트에 반영
+                    extractionStartDevTime = 0; 
                 }
                 else if (timeSec === 0 && lastBookooTime > 0 && isExtracting) {
                     showToast('🛑 저울 타이머 리셋 감지: 기록을 종료합니다.');
@@ -643,7 +687,7 @@
                 ctx.fillText('🏁 추출 종료 타겟', fx, padY + h - 15);
             }
             
-            // 기존 레시피의 마커 표시
+            // 공유 마커 그리기
             if (currentRecipe && currentRecipe.markers && currentRecipe.markers.length > 0) {
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = 'rgba(244, 63, 94, 0.6)';
@@ -697,9 +741,20 @@
                         break;
                     }
                 }
-        // ==========================================
-        // 컨트롤 버튼 이벤트
-        // ==========================================
+            }
+            
+            const diff = Math.abs(lastData.w - targetW);
+            let score = 100 - (diff * 2); 
+            if (score < 0) score = 0;
+            
+            currentFinalScore = score.toFixed(0); 
+            scoreValue.textContent = currentFinalScore + '%';
+            
+            if (score >= 90) scoreValue.className = "text-lg sm:text-2xl font-black text-emerald-400";
+            else if (score >= 70) scoreValue.className = "text-lg sm:text-2xl font-black text-yellow-400";
+            else scoreValue.className = "text-lg sm:text-2xl font-black text-red-400";
+        }
+
         btnTare.addEventListener('click', () => {
             if (currentScaleType === 'bookoo') sendBookooTare();
             else sendAcaiaTare();
@@ -711,7 +766,7 @@
             else sendAcaiaTimerReset();
             showToast('시간을 초기화했습니다.');
             if (isExtracting) {
-                toggleRecordState(); // 시간이 리셋되면 기록도 종료
+                toggleRecordState(); 
             }
             displayTime.textContent = "0' 00.0\"";
         });
@@ -745,7 +800,6 @@
 
                 if (extractionData.length > 5) {
                     setTimeout(() => {
-                        // 모달 오픈 전 탭 및 폼 세팅
                         if (currentRecipe) {
                             document.getElementById('post-brew-tabs').classList.remove('hidden');
                             document.getElementById('follower-form').classList.remove('hidden');
@@ -756,7 +810,6 @@
                             
                             document.getElementById('final-score-display').textContent = currentFinalScore + '%';
                             
-                            // 별점 초기화
                             document.getElementById('f-follow-rating').value = 0;
                             document.querySelectorAll('.star').forEach(s => s.classList.replace('text-yellow-400', 'text-zinc-600'));
                         } else {
@@ -940,7 +993,7 @@
             return steps;
         }
 
-        // 팔로워 폼 제출 (기존 레시피에 기록 추가)
+        // 팔로워 폼 제출
         document.getElementById('follower-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const rating = parseInt(document.getElementById('f-follow-rating').value);
@@ -991,7 +1044,7 @@
                 temp: temp,
                 steps: compressedSteps, 
                 markers: customMarkers,
-                attempts: [], // 팔로워들 기록용
+                attempts: [], 
                 likes: 0,
                 color: color
             };
