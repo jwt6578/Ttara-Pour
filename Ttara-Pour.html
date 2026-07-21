@@ -2,330 +2,316 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ttara-Pour Smart Brew</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
         
-        .toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-            background: rgba(15, 23, 42, 0.95); border: 1px solid #334155; color: white;
-            padding: 12px 24px; border-radius: 99px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            opacity: 0; z-index: 50; backdrop-filter: blur(8px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+        body { 
+            font-family: 'Inter', 'Pretendard', sans-serif; 
+            background-color: #000; 
+            color: #fff;
+            -webkit-tap-highlight-color: transparent;
         }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .recording-pulse { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+        
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(63, 63, 70, 0.5);
+        }
+
+        .digital-font {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 팝업 스타일 */
+        .popup-panel {
+            display: none;
+            position: absolute;
+            bottom: 110%; /* 버튼 바로 위에 뜨도록 */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(39, 39, 42, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(82, 82, 91, 0.5);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            width: max-content;
+        }
+        .popup-panel.active { display: flex; flex-direction: column; gap: 8px; }
+        .popup-panel::after {
+            content: ''; position: absolute; top: 100%; left: 50%;
+            margin-left: -6px; border-width: 6px; border-style: solid;
+            border-color: rgba(39, 39, 42, 0.95) transparent transparent transparent;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col p-3 md:p-5 gap-4 overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden relative selection:bg-indigo-500/30">
 
-    <header class="flex justify-between items-center bg-slate-800/80 backdrop-blur p-4 rounded-2xl shadow-lg border border-slate-700 shrink-0">
-        <div class="flex items-center gap-4">
-            <button onclick="window.location.href='index.html'" class="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm bg-slate-700/50 px-3 py-1.5 rounded-lg">
-                ◀ 커뮤니티로
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="flex justify-between items-center p-3 sm:p-5 border-b border-zinc-800 bg-black shrink-0 z-40 relative">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button onclick="window.location.href='index.html'" class="p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
-            <div>
-                <h1 class="text-lg md:text-xl font-bold text-white tracking-tight">Ttara-Pour</h1>
-                <div class="flex items-center gap-2 mt-0.5">
-                    <span id="bt-status-dot" class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
-                    <span id="bt-status-text" class="text-xs text-slate-400 font-medium">기기 미연결</span>
+            <div class="flex flex-col">
+                <h1 id="recipe-title" class="text-sm sm:text-xl font-bold tracking-tight text-white line-clamp-1">Free Brew (자유 추출)</h1>
+                <div class="flex items-center gap-2 text-[10px] sm:text-xs text-zinc-400">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-zinc-600"></div>
+                    <span id="statusText">블루투스 연결 대기중</span>
                 </div>
             </div>
         </div>
-        <div class="flex gap-2">
-            <button id="btn-connect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95">
-                저울 연결
+        
+        <div class="flex items-center gap-2 shrink-0">
+            <!-- 저울 종류 선택 -->
+            <select id="scaleType" class="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] sm:text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 hidden sm:block">
+                <option value="bookoo">Bookoo Scale</option>
+                <option value="acaia">Acaia Scale</option>
+            </select>
+            
+            <button id="btnConnect" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-colors">
+                연결하기
             </button>
-            <button id="btn-disconnect" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg active:scale-95 hidden">
-                연결 해제
+            <button id="btnDisconnect" class="bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-colors hidden">
+                연결해제
             </button>
         </div>
     </header>
 
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
-        <div class="lg:col-span-8 flex flex-col gap-4 min-h-0">
-            <!-- 디스플레이 -->
-            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-6 flex justify-between items-end shrink-0 relative overflow-hidden">
-                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div>
-                    <h3 class="text-sm font-bold text-slate-400 mb-1">실시간 무게 (Net Weight)</h3>
+        <!-- 왼쪽(또는 상단): 컨트롤 패널 -->
+        <section class="w-full lg:w-[400px] xl:w-[480px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 shrink-0 z-30">
+            <!-- 수치 디스플레이 (모바일에서 폰트 축소) -->
+            <div class="flex flex-col items-center lg:items-start justify-center flex-1 gap-2 lg:gap-4">
+                <div class="flex flex-col items-center lg:items-start">
+                    <span class="text-zinc-500 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1 sm:mb-2">Weight</span>
                     <div class="flex items-baseline gap-2">
-                        <div id="display-weight" class="text-6xl font-black tabular-nums text-white tracking-tighter">0.00</div>
-                        <div class="text-xl text-slate-500 font-medium">g</div>
+                        <div class="text-6xl sm:text-7xl xl:text-9xl font-black digital-font tracking-tighter" id="displayWeight">0.0</div>
+                        <span class="text-lg sm:text-2xl text-zinc-500 font-bold">g</span>
                     </div>
                 </div>
-                <div class="text-right">
-                    <h3 class="text-sm font-bold text-slate-400 mb-1">현재 유량</h3>
-                    <div class="flex items-baseline gap-1.5 justify-end">
-                        <div id="display-flow" class="text-3xl font-bold tabular-nums text-blue-400">0.0</div>
-                        <div class="text-sm text-slate-500">g/s</div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 그래프 -->
-            <div class="bg-slate-800/60 rounded-3xl border border-slate-700/50 p-5 flex-1 flex flex-col min-h-0 relative">
-                <div class="flex justify-between items-center mb-4 shrink-0">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                            <span id="ext-pulse" class="w-2.5 h-2.5 bg-rose-500 rounded-full hidden"></span> 가이드 추출
-                        </h3>
-                        <select id="recipe-select" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
-                            <option value="none">자유 추출 (가이드 없음)</option>
-                        </select>
-                        <div class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg flex gap-1 items-center">
-                            일치율: <span id="score-val" class="font-bold text-white tabular-nums">--</span>%
+                <div class="flex w-full justify-center lg:justify-start gap-8 sm:gap-12 mt-4 sm:mt-8">
+                    <div class="flex flex-col items-center lg:items-start">
+                        <span class="text-zinc-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2">Flow Rate</span>
+                        <div class="flex items-baseline gap-1">
+                            <div class="text-3xl sm:text-4xl xl:text-5xl font-black digital-font text-indigo-400" id="displayFlow">0.0</div>
+                            <span class="text-xs sm:text-sm text-zinc-500">g/s</span>
                         </div>
                     </div>
-                    <button id="btn-extraction" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2">
-                        <span id="ext-btn-icon">▶</span> <span id="ext-btn-text">추출 기록 시작 (동기화)</span>
-                    </button>
-                </div>
-                
-                <div class="relative w-full flex-1 bg-slate-900/50 rounded-xl overflow-hidden border border-slate-800">
-                    <canvas id="brewChart" class="w-full h-full block"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
-            
-            <!-- 저울 제어 패널 (브랜드 선택 및 팝업 통합) -->
-            <div class="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-4 shrink-0">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-white">저울 하드웨어 제어</h3>
-                    <select id="scale-type-select" class="bg-slate-900 border border-slate-700 rounded text-xs text-white px-2 py-1 outline-none focus:border-indigo-500 transition-colors">
-                        <option value="bookoo">Bookoo (부쿠)</option>
-                        <option value="acaia">Acaia (아카이아)</option>
-                    </select>
-                </div>
-                <p class="text-[10px] text-slate-400 mb-3 leading-tight">선택한 저울 브랜드에 맞춰 프로토콜 명령이 자동 변환되어 전송됩니다.</p>
-                
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <button id="btn-ctrl-tare" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">영점 (Tare)</button>
-                    <button id="btn-ctrl-start" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/40 py-2 rounded-lg text-xs font-bold transition-colors">Tare & Start</button>
-                    <button id="btn-ctrl-stop" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Stop</button>
-                    <button id="btn-ctrl-reset" class="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition-colors">타이머 Reset</button>
-                </div>
-                
-                <!-- 비프음 팝업 버튼 영역 -->
-                <div class="relative">
-                    <button id="btn-volume-popup" class="w-full bg-slate-800 border border-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg text-xs font-bold transition-all flex justify-center items-center gap-2">
-                        🔊 비프음 음량 설정
-                    </button>
-                    
-                    <!-- 팝업 패널 (기본 숨김) -->
-                    <div id="volume-popup-panel" class="hidden absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-white">비프음 크기 조절</span>
-                            <span id="volume-display" class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded font-mono font-bold">3</span>
-                        </div>
-                        <input type="range" id="volume-slider" min="0" max="5" value="3" class="w-full accent-indigo-500 bg-slate-900 rounded-lg appearance-none h-2 cursor-pointer">
-                        <p class="text-[9px] text-slate-400 mt-3 text-center">* Bookoo 저울 전용 (0: 음소거 ~ 5: 최대)</p>
+                    <div class="flex flex-col items-center lg:items-start">
+                        <span class="text-zinc-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2">Time</span>
+                        <div class="text-3xl sm:text-4xl xl:text-5xl font-black digital-font text-emerald-400" id="displayTime">0' 00.0"</div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-slate-900 rounded-2xl border border-slate-700 flex-1 flex flex-col min-h-[200px] overflow-hidden shrink-0">
-                <div class="px-4 py-2 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Live Data
-                    </h3>
-                    <div id="ext-time-display" class="text-sm font-mono text-white font-bold">0.0''</div>
+            <!-- 하단 버튼 컨트롤 -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-4 lg:mt-8 relative">
+                
+                <!-- 비프음 설정 (부쿠 전용 팝업) -->
+                <div class="relative flex justify-center">
+                    <button id="btnVolPopup" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-800 disabled:opacity-50">
+                        <span class="text-lg sm:text-xl">🔊</span>
+                        <span class="text-[10px] sm:text-xs font-bold">비프음</span>
+                    </button>
+                    <!-- 팝업 -->
+                    <div id="volPopup" class="popup-panel">
+                        <span class="text-[10px] font-bold text-zinc-400 text-center">볼륨 설정 (0~5)</span>
+                        <input type="range" id="volSlider" min="0" max="5" value="2" class="w-32 accent-indigo-500">
+                    </div>
                 </div>
-                <div class="flex-1 overflow-auto p-2">
-                    <table class="w-full text-left text-[10px] font-mono text-slate-400">
-                        <tbody id="log-table-body" class="divide-y divide-slate-800/50">
-                            <tr><td class="text-center p-4">데이터 대기중...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+
+                <button id="btnTare" class="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors border border-zinc-700 active:bg-zinc-600 disabled:opacity-50">
+                    <span class="text-lg sm:text-xl">⚖️</span>
+                    <span class="text-[10px] sm:text-xs font-bold">영점(Tare)</span>
+                </button>
+                <button id="btnRecord" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 sm:py-4 flex flex-col items-center gap-1 transition-colors shadow-lg active:bg-indigo-700 disabled:opacity-50">
+                    <span class="text-lg sm:text-xl" id="recordIcon">▶️</span>
+                    <span class="text-[10px] sm:text-xs font-bold" id="recordText">추출 시작</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 오른쪽(또는 하단): 그래프 캔버스 -->
+        <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
+            <!-- 가이드 점수 오버레이 (레시피 모드일 때만 보임) -->
+            <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 glass-panel px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
+                <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
+                <span id="scoreValue" class="text-lg sm:text-2xl font-black text-emerald-400">100%</span>
             </div>
             
-        </div>
+            <div class="absolute inset-0 p-2 sm:p-4 lg:p-8">
+                <canvas id="brewChart" class="w-full h-full"></canvas>
+            </div>
+        </section>
+
     </main>
 
-    <div id="toast" class="toast">메시지</div>
+    <!-- 토스트 메시지 -->
+    <div id="toast" class="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full shadow-2xl border border-zinc-700 opacity-0 transition-opacity duration-300 z-50 pointer-events-none text-xs sm:text-sm font-medium whitespace-nowrap">메시지</div>
 
     <script>
-        const displayWeight = document.getElementById('display-weight');
-        const displayFlow = document.getElementById('display-flow');
-        const statusDot = document.getElementById('bt-status-dot');
-        const statusText = document.getElementById('bt-status-text');
+        // DOM 요소
+        const btnConnect = document.getElementById('btnConnect');
+        const btnDisconnect = document.getElementById('btnDisconnect');
+        const btnTare = document.getElementById('btnTare');
+        const btnRecord = document.getElementById('btnRecord');
+        const recordIcon = document.getElementById('recordIcon');
+        const recordText = document.getElementById('recordText');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
         
-        const btnConnect = document.getElementById('btn-connect');
-        const btnDisconnect = document.getElementById('btn-disconnect');
-        const btnExtraction = document.getElementById('btn-extraction');
-        const extBtnIcon = document.getElementById('ext-btn-icon');
-        const extBtnText = document.getElementById('ext-btn-text');
-        const extPulse = document.getElementById('ext-pulse');
+        const displayWeight = document.getElementById('displayWeight');
+        const displayFlow = document.getElementById('displayFlow');
+        const displayTime = document.getElementById('displayTime');
+        const toast = document.getElementById('toast');
         
-        const recipeSelect = document.getElementById('recipe-select');
-        const logTableBody = document.getElementById('log-table-body');
-        const extTimeDisplay = document.getElementById('ext-time-display');
+        const scaleTypeSelect = document.getElementById('scaleType');
+        const btnVolPopup = document.getElementById('btnVolPopup');
+        const volPopup = document.getElementById('volPopup');
+        const volSlider = document.getElementById('volSlider');
 
-        // 저울 및 볼륨 제어 UI 변수
-        let currentScaleType = 'bookoo';
-        const scaleTypeSelect = document.getElementById('scale-type-select');
-        const btnVolPopup = document.getElementById('btn-volume-popup');
-        const volPopupPanel = document.getElementById('volume-popup-panel');
+        const scoreOverlay = document.getElementById('scoreOverlay');
+        const scoreValue = document.getElementById('scoreValue');
 
-        let bluetoothDevice = null;
-        let scaleCharacteristic = null;
-        let writeCharacteristic = null;
-        
+        // 상태 변수
+        let bluetoothDevice;
+        let scaleCharacteristic;
+        let writeCharacteristic;
         let isConnected = false;
         let isExtracting = false;
-        let currentRawWeight = 0;
+        let currentScaleType = 'bookoo';
+        
         let extractionData = [];
         let extractionStartDevTime = -1;
         let currentRecipe = null;
         
+        // 유량 계산용 (Acaia)
+        let smoothedFlow = 0;
+        let lastCalcTime = 0;
+        let lastCalcWeight = 0;
+
         const canvas = document.getElementById('brewChart');
         const ctx = canvas.getContext('2d');
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
+        // 모바일 모드 대응 캔버스 리사이징 처리
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            drawGraph();
         }
+        window.addEventListener('resize', resizeCanvas);
 
-        // LocalStorage 레시피 불러오기
-        function loadCloudRecipes() {
-            const saved = localStorage.getItem('buku_recipes');
-            if(saved) {
-                const recipes = JSON.parse(saved);
-                recipes.forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r.id;
-                    opt.textContent = `[커뮤니티] ${r.title}`;
-                    recipeSelect.appendChild(opt);
-                });
-
-                const urlParams = new URLSearchParams(window.location.search);
-                const rId = urlParams.get('recipeId');
-                if (rId) {
-                    recipeSelect.value = rId;
-                    const r = recipes.find(x => x.id === rId);
-                    if(r) {
-                        currentRecipe = r.steps;
-                        showToast(`'${r.title}' 가이드가 세팅되었습니다.`);
-                    }
+        // ==========================================
+        // 초기화 (레시피 로드)
+        // ==========================================
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            const recipeId = params.get('recipeId');
+            
+            if (recipeId) {
+                const recipes = JSON.parse(localStorage.getItem('buku_recipes') || '[]');
+                currentRecipe = recipes.find(r => r.id === recipeId);
+                if (currentRecipe) {
+                    document.getElementById('recipe-title').textContent = currentRecipe.title;
+                    scoreOverlay.classList.remove('hidden');
                 }
             }
-        }
-        loadCloudRecipes();
 
-        recipeSelect.addEventListener('change', (e) => {
-            const rId = e.target.value;
-            if(rId === 'none') { currentRecipe = null; return; }
-            const saved = JSON.parse(localStorage.getItem('buku_recipes'));
-            const r = saved.find(x => x.id === rId);
-            if(r) currentRecipe = r.steps;
+            // 모바일용 저울 셀렉터 설정 반영
+            const dName = scaleTypeSelect.value;
+            handleScaleTypeChange();
+
+            // 캔버스 초기화
+            setTimeout(resizeCanvas, 100);
+        }
+
+        // ==========================================
+        // UI 인터랙션
+        // ==========================================
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
+        }
+
+        // 비프음 팝업 토글
+        btnVolPopup.addEventListener('click', (e) => {
+            e.stopPropagation();
+            volPopup.classList.toggle('active');
+        });
+        document.addEventListener('click', (e) => {
+            if(!volPopup.contains(e.target) && !btnVolPopup.contains(e.target)) {
+                volPopup.classList.remove('active');
+            }
         });
 
+        // 60초 이상일 때 분' 초" 포맷팅
+        function formatTime(seconds) {
+            if (seconds < 60) return `${seconds.toFixed(1)}"`;
+            const m = Math.floor(seconds / 60);
+            const s = (seconds % 60).toFixed(1);
+            return `${m}' ${s.padStart(4, '0')}"`;
+        }
+
+        function handleScaleTypeChange() {
+            currentScaleType = scaleTypeSelect.value;
+            if(currentScaleType === 'acaia') {
+                btnVolPopup.disabled = true;
+                btnVolPopup.classList.add('opacity-30', 'cursor-not-allowed');
+            } else {
+                btnVolPopup.disabled = false;
+                btnVolPopup.classList.remove('opacity-30', 'cursor-not-allowed');
+            }
+        }
+        scaleTypeSelect.addEventListener('change', handleScaleTypeChange);
+
         // ==========================================
-        // 저울 종류 및 명령어 제어 로직
+        // 블루투스 프로토콜 (Bookoo & Acaia)
         // ==========================================
-        
-        // 부쿠 저울용 XOR 체크섬 계산
-        function calcCheckSum(bytes) {
+        function calcCheckSum(bytesArray) {
             let sum = 0;
-            for (let i = 0; i < bytes.length; i++) sum ^= bytes[i];
+            for (let i = 0; i < bytesArray.length; i++) sum ^= bytesArray[i];
             return sum;
         }
 
-        // 저울 변경 시 비프음 버튼 활성/비활성
-        scaleTypeSelect.addEventListener('change', (e) => {
-            currentScaleType = e.target.value;
-            if (currentScaleType === 'acaia') {
-                btnVolPopup.style.opacity = '0.3';
-                btnVolPopup.disabled = true;
-                volPopupPanel.classList.add('hidden');
-                showToast('아카이아는 비프음 설정을 지원하지 않습니다.');
-            } else {
-                btnVolPopup.style.opacity = '1';
-                btnVolPopup.disabled = false;
-            }
-        });
-
-        // 팝업 열기/닫기 처리
-        btnVolPopup.addEventListener('click', (e) => {
-            e.stopPropagation();
-            volPopupPanel.classList.toggle('hidden');
-        });
-        document.addEventListener('click', (e) => {
-            if (!volPopupPanel.contains(e.target) && e.target !== btnVolPopup) {
-                volPopupPanel.classList.add('hidden');
-            }
-        });
-
-        // 볼륨 슬라이더 전송
-        document.getElementById('volume-slider').addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            document.getElementById('volume-display').textContent = val;
-            const hexVal = val.toString(16).padStart(2, '0');
-            sendScaleCommandRaw(`03 0A 02 00 0${hexVal}`);
-        });
-
-        // 통합 명령어 전송 함수
-        async function sendScaleCommandRaw(hexStr) {
-            if (!writeCharacteristic) return showToast('기기가 연결되지 않았습니다.');
+        async function sendCommand(cmdArray) {
+            if (!isConnected || !writeCharacteristic) return showToast('저울이 연결되지 않았습니다.');
             try {
-                const parts = hexStr.split(' ').map(x => parseInt(x, 16));
-                let buffer;
-                
-                // Bookoo일 경우에만 맨 끝에 체크섬을 붙여서 전송
-                if (currentScaleType === 'bookoo') {
-                    const checkSum = calcCheckSum(parts);
-                    buffer = new Uint8Array([...parts, checkSum]);
-                } else {
-                    // Acaia는 체크섬 연산 없이 원본 그대로 전송
-                    buffer = new Uint8Array(parts);
-                }
-                
-                if (writeCharacteristic.properties.writeWithoutResponse) await writeCharacteristic.writeValueWithoutResponse(buffer);
-                else await writeCharacteristic.writeValue(buffer);
-                
-            } catch(e) {
-                console.error(e);
+                const data = new Uint8Array(cmdArray);
+                await writeCharacteristic.writeValue(data);
+            } catch (e) {
+                console.error('명령 전송 실패:', e);
             }
         }
 
-        // 상태별 명령어 매핑 및 전송
-        function execCommand(cmdType) {
-            let hexCmd = "";
-            if (currentScaleType === 'bookoo') {
-                if (cmdType === 'tare') hexCmd = "03 0A 01 00 00";
-                else if (cmdType === 'start') hexCmd = "03 0A 07 00 00"; // Tare & Start
-                else if (cmdType === 'stop') hexCmd = "03 0A 05 00 00";
-                else if (cmdType === 'reset') hexCmd = "03 0A 06 00 00";
-            } else if (currentScaleType === 'acaia') {
-                if (cmdType === 'tare') hexCmd = "EF DD 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00";
-                else if (cmdType === 'start') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Start
-                else if (cmdType === 'stop') hexCmd = "EF DD 0D 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Stop
-                else if (cmdType === 'reset') hexCmd = "EF DD 0D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"; // Reset/Start 
-            }
-            if (hexCmd) sendScaleCommandRaw(hexCmd);
+        // Bookoo 명령
+        async function sendBookooTare() { await sendCommand([0x03, 0x0A, 0x01, 0x00, 0x00, 0x08]); }
+        async function sendBookooTimerStart() { await sendCommand([0x03, 0x0A, 0x04, 0x00, 0x00, 0x0A]); }
+        async function sendBookooTimerStop() { await sendCommand([0x03, 0x0A, 0x05, 0x00, 0x00, 0x0D]); }
+        async function sendBookooBeep(level) { 
+            const base = [0x03, 0x0A, 0x02, 0x00, level];
+            base.push(calcCheckSum(base));
+            await sendCommand(base);
         }
 
-        document.getElementById('btn-ctrl-tare').addEventListener('click', () => execCommand('tare'));
-        document.getElementById('btn-ctrl-start').addEventListener('click', () => execCommand('start'));
-        document.getElementById('btn-ctrl-stop').addEventListener('click', () => execCommand('stop'));
-        document.getElementById('btn-ctrl-reset').addEventListener('click', () => execCommand('reset'));
+        // Acaia 명령 (Heartbeat, Tare, Timer)
+        async function sendAcaiaHeartbeat() { await sendCommand([0xef, 0xdd, 0x00, 0x02, 0x00, 0x02, 0x00]); }
+        async function sendAcaiaTare() { await sendCommand([0xef, 0xdd, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
+        async function sendAcaiaTimerStart() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
+        async function sendAcaiaTimerStop() { await sendCommand([0xef, 0xdd, 0x0d, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]); }
 
         // ==========================================
-        // 블루투스 연결
+        // 블루투스 연결 관리
         // ==========================================
-btnConnect.addEventListener('click', async () => {
+        btnConnect.addEventListener('click', async () => {
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -349,14 +335,13 @@ btnConnect.addEventListener('click', async () => {
                     if (char.properties.write || char.properties.writeWithoutResponse) writeCharacteristic = char;
                 }
 
-                /* STREAMING_CHUNK:기기 이름 기반 자동 인식 로직 적용 */
+                // 기기 이름 기반 자동 인식 로직 적용
                 const dName = (bluetoothDevice.name || '').toLowerCase();
                 if (dName.includes('acaia') || dName.includes('lunar') || dName.includes('pearl') || dName.includes('cinco') || dName.includes('pyxis')) {
                     scaleTypeSelect.value = 'acaia';
                 } else {
                     scaleTypeSelect.value = 'bookoo';
                 }
-                // 변경 이벤트를 강제로 발생시켜 UI(비프음 버튼 등)를 알맞게 전환
                 scaleTypeSelect.dispatchEvent(new Event('change'));
 
                 isConnected = true;
@@ -364,7 +349,11 @@ btnConnect.addEventListener('click', async () => {
                 statusText.textContent = bluetoothDevice.name || '저울 연결됨';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
-                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 완료!`);
+                showToast(`${bluetoothDevice.name ? bluetoothDevice.name : '저울'} 자동 인식 및 연결 완료!`);
+                
+                if(currentScaleType === 'acaia') {
+                    setInterval(() => { if(isConnected) sendAcaiaHeartbeat(); }, 2000);
+                }
             } catch (error) {
                 showToast('연결 실패: ' + error.message);
             }
@@ -374,11 +363,11 @@ btnConnect.addEventListener('click', async () => {
 
         function onDisconnected() {
             isConnected = false;
-            statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
-            statusText.textContent = '기기 미연결';
+            statusDot.className = 'w-2 h-2 rounded-full bg-zinc-600';
+            statusText.textContent = '블루투스 연결 대기중';
             btnConnect.classList.remove('hidden');
             btnDisconnect.classList.add('hidden');
-            if(isExtracting) btnExtraction.click();
+            showToast('저울과 연결이 끊어졌습니다.');
         }
 
         // ==========================================
@@ -389,7 +378,7 @@ btnConnect.addEventListener('click', async () => {
             let weight = 0, flow = 0, timeSec = 0;
             let isValid = false;
 
-            // 1. Bookoo 프로토콜 처리 (03 0B 로 시작)
+            // 1. Bookoo 프로토콜 (03 0B)
             if (bytes.length >= 20 && bytes[0] === 0x03 && bytes[1] === 0x0B) {
                 const timeRaw = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
                 timeSec = timeRaw / 1000;
@@ -403,24 +392,42 @@ btnConnect.addEventListener('click', async () => {
                 flow = (flowRaw / 100) * fSign;
                 isValid = true;
             } 
-            // 2. Acaia 프로토콜 기초 처리 (EF DD 로 시작)
+            // 2. Acaia 프로토콜 (EF DD)
             else if (bytes[0] === 0xEF && bytes[1] === 0xDD && bytes.length >= 10) {
                 const view = new DataView(event.target.value.buffer);
                 try {
-                    // 아카이아 무게 데이터는 보통 5번 Offset에서 32bit Little Endian으로 들어옴
                     let rawAcaia = view.getInt32(5, true); 
-                    weight = rawAcaia / 10; // 아카이아는 기본적으로 10으로 나누어 g 단위 표시
+                    weight = rawAcaia / 10;
                     
-                    // 아카이아는 타임스탬프가 다르게 오므로 로컬 시간 기반으로 대체 추적
                     if(isExtracting) {
                         if(extractionStartDevTime === -1) extractionStartDevTime = Date.now();
                         timeSec = (Date.now() - extractionStartDevTime) / 1000;
+                    } else {
+                        timeSec = Date.now() / 1000;
                     }
                     isValid = true;
                 } catch(e) { return; }
             }
             
-            if (!isValid) return; // 알 수 없는 포맷 무시
+            if (!isValid) return; 
+
+            // 아카이아 유량 수동 계산 로직
+            let nowTime = Date.now();
+            if (lastCalcTime === 0) lastCalcTime = nowTime;
+            let dt = (nowTime - lastCalcTime) / 1000;
+
+            if (currentScaleType === 'acaia') {
+                if (dt >= 0.2) {
+                    let rawFlow = (weight - lastCalcWeight) / dt;
+                    if (rawFlow < 0) rawFlow = 0;
+                    flow = (smoothedFlow * 0.7) + (rawFlow * 0.3); // 지수이동평균(EMA)
+                    smoothedFlow = flow;
+                    lastCalcTime = nowTime;
+                    lastCalcWeight = weight;
+                } else {
+                    flow = smoothedFlow;
+                }
+            }
 
             // 디스플레이 업데이트
             displayWeight.textContent = weight.toFixed(1);
@@ -428,193 +435,235 @@ btnConnect.addEventListener('click', async () => {
 
             // 추출 기록 모드일 때
             if (isExtracting) {
-                let relTime = 0;
                 if (currentScaleType === 'bookoo') {
-                    if (extractionStartDevTime === -1) extractionStartDevTime = timeSec;
-                    relTime = timeSec - extractionStartDevTime;
+                    if (extractionStartDevTime === -1 && timeSec > 0) extractionStartDevTime = timeSec;
+                    if (extractionStartDevTime !== -1) {
+                        let diffTime = timeSec - extractionStartDevTime;
+                        displayTime.textContent = formatTime(diffTime);
+                        extractionData.push({ t: diffTime, w: weight });
+                    }
                 } else {
-                    relTime = timeSec; // Acaia는 위에서 이미 상대시간으로 계산됨
+                    displayTime.textContent = formatTime(timeSec);
+                    extractionData.push({ t: timeSec, w: weight });
                 }
                 
-                if (relTime < 0) relTime = 0;
-                
-                extTimeDisplay.textContent = relTime >= 60 ? `${Math.floor(relTime/60)}' ${(relTime%60).toFixed(1)}''` : `${relTime.toFixed(1)}''`;
-                extractionData.push({ t: relTime, w: weight, f: flow });
-
-                // 우측 로그 테이블 업데이트 (렉 방지 위해 확률적 출력)
-                if(Math.random() < 0.2) {
-                    if(logTableBody.childElementCount === 1 && logTableBody.firstChild.textContent.includes('대기')) logTableBody.innerHTML = '';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="p-1 text-slate-500">${relTime.toFixed(1)}s</td><td class="p-1 text-right text-emerald-400">${weight.toFixed(1)}g</td>`;
-                    logTableBody.insertBefore(tr, logTableBody.firstChild);
-                    if (logTableBody.childElementCount > 20) logTableBody.removeChild(logTableBody.lastChild);
-                }
+                requestAnimationFrame(drawGraph);
+                calculateScore();
             }
         }
 
         // ==========================================
-        // 추출 버튼 토글
+        // 그래프 렌더링 시스템
         // ==========================================
-        btnExtraction.addEventListener('click', async () => {
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // X축, Y축 최댓값 설정
+            let maxTime = 30;
+            let maxWeight = 50;
+
+            if (currentRecipe && currentRecipe.steps.length > 0) {
+                maxTime = Math.max(maxTime, currentRecipe.steps[currentRecipe.steps.length - 1].t + 30);
+                maxWeight = Math.max(maxWeight, currentRecipe.steps[currentRecipe.steps.length - 1].w);
+            }
+
+            if (extractionData.length > 0) {
+                maxTime = Math.max(maxTime, extractionData[extractionData.length - 1].t + 10);
+                maxWeight = Math.max(maxWeight, ...extractionData.map(d => d.w));
+            }
+            
+            // Y축 20 단위로 올림 처리
+            maxWeight = Math.ceil(maxWeight / 20) * 20;
+
+            const padX = 40; 
+            const padY = 40;
+            const w = canvas.width - padX * 2;
+            const h = canvas.height - padY * 2;
+
+            function getX(t) { return padX + (t / maxTime) * w; }
+            function getY(wt) { return padY + h - (wt / maxWeight) * h; }
+
+            // 그리드 그리기 (X축: 30초 간격, Y축: 20g 간격)
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#3f3f46';
+            ctx.fillStyle = '#a1a1aa';
+            ctx.font = '10px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            // X축 (시간)
+            for (let t = 0; t <= maxTime; t += 30) {
+                const x = getX(t);
+                ctx.beginPath(); ctx.moveTo(x, padY); ctx.lineTo(x, padY + h); ctx.stroke();
+                ctx.fillText(formatTime(t).replace(/"/g, ''), x, padY + h + 8);
+            }
+
+            // Y축 (무게)
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let wt = 0; wt <= maxWeight; wt += 20) {
+                const y = getY(wt);
+                ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(padX + w, y); ctx.stroke();
+                ctx.fillText(wt + 'g', padX - 8, y);
+            }
+
+            // 1. 레시피 가이드 (배경)
+            if (currentRecipe && currentRecipe.steps.length > 0) {
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#6366f1'; 
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                
+                currentRecipe.steps.forEach((s, i) => {
+                    if (i === 0) ctx.moveTo(getX(s.t), getY(s.w));
+                    else ctx.lineTo(getX(s.t), getY(s.w));
+                });
+                ctx.stroke();
+                ctx.setLineDash([]); // 대시 초기화
+
+                // 타겟 범례 및 마커 그리기
+                ctx.fillStyle = '#6366f1';
+                currentRecipe.steps.forEach((s, i) => {
+                    const x = getX(s.t);
+                    const y = getY(s.w);
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 마지막 점이 아니면 바로 위에 범례 표시
+                    if (i > 0 && i < currentRecipe.steps.length - 1) {
+                        ctx.fillStyle = '#a5b4fc';
+                        ctx.font = 'bold 11px Inter';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`${s.t}s / ${s.w}g`, x, y - 12);
+                    }
+                });
+
+                // 추출 완료선 (마지막 스텝)
+                const finalStep = currentRecipe.steps[currentRecipe.steps.length - 1];
+                const fx = getX(finalStep.t);
+                
+                ctx.strokeStyle = '#ef4444'; // 빨간 점선
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(fx, padY);
+                ctx.lineTo(fx, padY + h);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // 완료선 하단 텍스트
+                ctx.fillStyle = '#fca5a5';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 12px Inter';
+                ctx.fillText('🏁 추출 종료 타겟', fx, padY + h - 15);
+            }
+
+            // 2. 실시간 추출 데이터 그리기
+            if (extractionData.length > 0) {
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#10b981'; 
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                
+                extractionData.forEach((d, i) => {
+                    if (i === 0) ctx.moveTo(getX(d.t), getY(d.w));
+                    else ctx.lineTo(getX(d.t), getY(d.w));
+                });
+                ctx.stroke();
+                
+                // 마지막 현재 위치 표시 (Glow)
+                const last = extractionData[extractionData.length - 1];
+                ctx.fillStyle = '#10b981';
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(getX(last.t), getY(last.w), 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; // 초기화
+            }
+        }
+
+        // 일치율 점수 계산
+        function calculateScore() {
+            if (!currentRecipe || extractionData.length === 0) return;
+            const lastData = extractionData[extractionData.length - 1];
+            
+            // 현재 시간에 해당하는 가이드의 목표 무게 찾기 (선형 보간)
+            let targetW = 0;
+            const steps = currentRecipe.steps;
+            
+            if (lastData.t <= steps[0].t) {
+                targetW = steps[0].w;
+            } else if (lastData.t >= steps[steps.length-1].t) {
+                targetW = steps[steps.length-1].w;
+            } else {
+                for (let i = 0; i < steps.length - 1; i++) {
+                    if (lastData.t >= steps[i].t && lastData.t <= steps[i+1].t) {
+                        const ratio = (lastData.t - steps[i].t) / (steps[i+1].t - steps[i].t);
+                        targetW = steps[i].w + ratio * (steps[i+1].w - steps[i].w);
+                        break;
+                    }
+                }
+            }
+            
+            const diff = Math.abs(lastData.w - targetW);
+            let score = 100 - (diff * 2); // 1g 오차당 2점 감점
+            if (score < 0) score = 0;
+            
+            scoreValue.textContent = score.toFixed(0) + '%';
+            
+            if (score >= 90) scoreValue.className = "text-2xl font-black text-emerald-400";
+            else if (score >= 70) scoreValue.className = "text-2xl font-black text-yellow-400";
+            else scoreValue.className = "text-2xl font-black text-red-400";
+        }
+
+        // ==========================================
+        // 컨트롤 버튼 이벤트
+        // ==========================================
+        btnTare.addEventListener('click', () => {
+            if (currentScaleType === 'bookoo') sendBookooTare();
+            else sendAcaiaTare();
+            showToast('영점을 맞췄습니다.');
+        });
+
+        volSlider.addEventListener('change', (e) => {
+            const level = parseInt(e.target.value);
+            sendBookooBeep(level);
+        });
+
+        btnRecord.addEventListener('click', () => {
             isExtracting = !isExtracting;
             if (isExtracting) {
                 extractionData = [];
                 extractionStartDevTime = -1;
-                logTableBody.innerHTML = '';
                 
-                execCommand('start'); // 브랜드에 맞춰 시작(Tare&Start) 전송
-                
-                btnExtraction.className = 'bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
-                extPulse.classList.remove('hidden'); extPulse.classList.add('recording-pulse');
-                extBtnIcon.textContent = '■'; extBtnText.textContent = '추출 기록 중지';
+                // 타이머 시작 명령
+                if (currentScaleType === 'bookoo') sendBookooTimerStart();
+                else sendAcaiaTimerStart();
+
+                recordIcon.textContent = '⏹️';
+                recordText.textContent = '추출 종료';
+                btnRecord.classList.replace('bg-indigo-600', 'bg-rose-600');
+                btnRecord.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+                showToast('추출(기록)을 시작합니다!');
             } else {
-                execCommand('stop'); // 브랜드에 맞춰 정지 전송
-                
-                btnExtraction.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2';
-                extPulse.classList.add('hidden'); extPulse.classList.remove('recording-pulse');
-                extBtnIcon.textContent = '▶'; extBtnText.textContent = '추출 기록 시작 (동기화)';
+                // 타이머 정지 명령
+                if (currentScaleType === 'bookoo') sendBookooTimerStop();
+                else sendAcaiaTimerStop();
+
+                recordIcon.textContent = '▶️';
+                recordText.textContent = '추출 시작';
+                btnRecord.classList.replace('bg-rose-600', 'bg-indigo-600');
+                btnRecord.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+                showToast('추출이 종료되었습니다.');
             }
         });
 
-        // ==========================================
-        // 그래프 렌더링
-        // ==========================================
-        function formatTime(t) {
-            return t >= 60 ? `${Math.floor(t/60)}' ${(t%60).toFixed(0)}''` : `${t.toFixed(0)}s`;
-        }
-
-        function resizeCanvas() {
-            if (canvas.parentElement) {
-                canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
-                canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
-                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            }
-        }
-        window.addEventListener('resize', resizeCanvas);
-        setTimeout(resizeCanvas, 100);
-
-        function drawGraph() {
-            const w = canvas.width / window.devicePixelRatio;
-            const h = canvas.height / window.devicePixelRatio;
-            ctx.clearRect(0, 0, w, h);
-            
-            const pL = 40, pR = 30, pT = 30, pB = 40;
-            const dW = w - pL - pR;
-            const dH = h - pT - pB;
-
-            let maxT = 60; let maxW = 100; let maxF = 10;
-            
-            // X, Y축 자동 스케일링 로직
-            if (currentRecipe && currentRecipe.length > 0) {
-                maxT = currentRecipe[currentRecipe.length - 1].t + 30; // 30s margin
-                const recipeMaxW = Math.max(...currentRecipe.map(x => x.w));
-                maxW = Math.ceil(recipeMaxW / 10) * 10;
-            }
-            if (extractionData.length > 0) {
-                const actT = extractionData[extractionData.length - 1].t;
-                const actW = Math.max(...extractionData.map(x => x.w));
-                if (actT > maxT - 20) maxT = actT + 20;
-                if (actW > maxW) maxW = Math.ceil(actW / 10) * 10;
-                maxF = Math.max(maxF, ...extractionData.map(x => x.f)) * 1.5;
-            }
-
-            const getX = (t) => pL + (t / maxT) * dW;
-            const getY = (wg) => pT + dH - (wg / maxW) * dH;
-
-            // 배경 Grid 그리기 (Y축 20단위, X축 30초 단위)
-            ctx.font = '10px Inter'; ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-            ctx.beginPath(); ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 1;
-            
-            for (let weight = 0; weight <= maxW; weight += 20) {
-                const y = getY(weight);
-                ctx.moveTo(pL, y); ctx.lineTo(w - pR + 10, y);
-                ctx.fillText(weight + 'g', pL - 8, y);
-            }
-            ctx.stroke();
-
-            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-            ctx.beginPath();
-            for (let t = 0; t <= maxT; t += 30) {
-                const x = getX(t);
-                ctx.moveTo(x, pT - 10); ctx.lineTo(x, pT + dH);
-                ctx.fillText(formatTime(t), x, pT + dH + 8);
-            }
-            ctx.stroke();
-
-            // 가이드 라인 렌더링
-            if (currentRecipe && currentRecipe.length > 0) {
-                // 선 그리기
-                ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-                for (let i = 0; i < currentRecipe.length; i++) {
-                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
-                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-                }
-                ctx.stroke(); ctx.setLineDash([]);
-
-                // 텍스트 & 마커
-                ctx.fillStyle = '#94a3b8';
-                for (let i = 1; i < currentRecipe.length; i++) {
-                    const px = getX(currentRecipe[i].t); const py = getY(currentRecipe[i].w);
-                    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
-                    
-                    // 타겟 텍스트 상단 배치
-                    ctx.font = '10px Inter';
-                    ctx.fillText(`${formatTime(currentRecipe[i].t)} / ${currentRecipe[i].w}g`, px, py - 18);
-                }
-
-                // 종료 시점 마커 (빨간선 하단 배치)
-                const endX = getX(currentRecipe[currentRecipe.length-1].t);
-                ctx.beginPath(); ctx.strokeStyle = 'rgba(244,63,94,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
-                ctx.moveTo(endX, pT); ctx.lineTo(endX, pT+dH); ctx.stroke(); ctx.setLineDash([]);
-                
-                ctx.fillStyle = '#f43f5e'; ctx.font = 'bold 11px Inter';
-                // 글씨를 X축 바닥 근처로 이동
-                ctx.fillText('🏁 추출 종료 타겟', endX, pT + dH - 15); 
-            }
-
-            // 실제 추출 데이터 렌더링
-            if (extractionData.length > 0) {
-                ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-                for (let i = 0; i < extractionData.length; i++) {
-                    const px = getX(extractionData[i].t); const py = getY(extractionData[i].w);
-                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-                
-                // 일치율(Score) 실시간 계산
-                if(currentRecipe && currentRecipe.length > 0) {
-                    let totalErr = 0; let count = 0;
-                    const maxRt = currentRecipe[currentRecipe.length-1].t;
-                    
-                    extractionData.forEach(d => {
-                        if(d.t > maxRt) return;
-                        let targetW = 0;
-                        for(let j=0; j<currentRecipe.length-1; j++) {
-                            if(d.t >= currentRecipe[j].t && d.t <= currentRecipe[j+1].t) {
-                                let ratio = (d.t - currentRecipe[j].t)/(currentRecipe[j+1].t - currentRecipe[j].t);
-                                targetW = currentRecipe[j].w + (currentRecipe[j+1].w - currentRecipe[j].w)*ratio;
-                                break;
-                            }
-                        }
-                        totalErr += Math.abs(d.w - targetW); count++;
-                    });
-                    
-                    if(count > 0) {
-                        let avgErr = totalErr/count;
-                        let score = Math.max(0, 100 - (avgErr*4));
-                        const sEl = document.getElementById('score-val');
-                        sEl.textContent = score.toFixed(0);
-                        
-                        if(score >= 90) sEl.className = 'font-bold tabular-nums text-emerald-400';
-                        else if(score >= 70) sEl.className = 'font-bold tabular-nums text-yellow-400';
-                        else sEl.className = 'font-bold tabular-nums text-rose-400';
-                    }
-                }
-            }
-
-            requestAnimationFrame(drawGraph);
-        }
-        requestAnimationFrame(drawGraph);
+        // 시작
+        init();
     </script>
 </body>
 </html>
