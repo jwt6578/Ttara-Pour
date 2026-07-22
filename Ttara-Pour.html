@@ -290,13 +290,21 @@
                 const maxWater = currentRecipe.steps && currentRecipe.steps.length > 0 ? currentRecipe.steps[currentRecipe.steps.length-1].w : 0;
                 const ratio = (currentRecipe.beans && currentRecipe.beans > 0 && maxWater > 0) ? (maxWater / currentRecipe.beans).toFixed(1) : 0;
                 
-                infoEl.textContent = `${currentRecipe.dripper} | ${currentRecipe.beans}g : ${maxWater}g (1:${ratio}) | ${currentRecipe.temp}°C`;
+                let grinderText = "";
+                if (currentRecipe.grinder && currentRecipe.grindSetting) {
+                    grinderText = ` | ⚙️ ${currentRecipe.grinder} (${currentRecipe.grindSetting})`;
+                } else if (currentRecipe.grinder) {
+                    grinderText = ` | ⚙️ ${currentRecipe.grinder}`;
+                }
+
+                infoEl.textContent = `${currentRecipe.dripper} | ${currentRecipe.beans}g : ${maxWater}g (비율 1:${ratio}) | ${currentRecipe.temp}°C${grinderText}`;
                 infoEl.classList.remove('hidden');
                 scoreOverlay.classList.remove('hidden');
                 
                 document.getElementById('f-beans').value = currentRecipe.beans;
                 document.getElementById('f-temp').value = currentRecipe.temp;
                 document.getElementById('f-dripper').value = currentRecipe.dripper;
+                
                 if(currentRecipe.markers) customMarkers = [...currentRecipe.markers];
             } else {
                 titleEl.textContent = 'Free Brew (자유 추출)';
@@ -336,7 +344,7 @@
         }
 
         // ==========================================
-        // 블루투스 연결 관리
+        // 블루투스 처리
         // ==========================================
         function calcCheckSum(bytesArray) {
             let sum = 0; for (let i = 0; i < bytesArray.length; i++) sum ^= bytesArray[i]; return sum;
@@ -562,6 +570,7 @@
             }
 
             if (currentScaleType === 'bookoo') {
+                // 이미 흘러가는 시간을 동기화
                 if (!isExtracting) displayTime.textContent = formatTime(timeSec);
 
                 if (timeSec > 0 && lastBookooTime === 0 && !isExtracting) {
@@ -595,9 +604,6 @@
             }
         }
 
-        // ==========================================
-        // 캔버스 그리기 (겹침 방지)
-        // ==========================================
         function drawGraph() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let maxTime = 30; let maxWeight = 50;
@@ -890,6 +896,7 @@
                 password: document.getElementById('f-pw').value, dripper: document.getElementById('f-dripper').value,
                 origin: document.getElementById('f-origin').value || '블렌드', desc: document.getElementById('f-desc').value,
                 beans: Number(document.getElementById('f-beans').value), temp: temp, steps: compressedSteps, markers: customMarkers,
+                grinder: document.getElementById('f-grinder').value, grindSetting: document.getElementById('f-grind-setting').value,
                 attempts: [], likes: 0, color: color, createdAt: Date.now()
             };
             let recipes = JSON.parse(localStorage.getItem('buku_recipes') || '[]');
