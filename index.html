@@ -18,11 +18,13 @@
         .graph-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: drawLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes drawLine { to { stroke-dashoffset: 0; } }
         dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); }
+
         #editorChart { touch-action: none; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
+    <!-- HEADER -->
     <header class="glass-panel px-6 py-4 flex justify-between items-center shrink-0 sticky top-0 z-40 border-b border-zinc-800">
         <div class="flex items-center gap-4">
             <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 text-indigo-400">
@@ -37,7 +39,7 @@
         <div class="flex items-center gap-4">
             <div class="relative hidden md:block">
                 <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <input type="text" id="main-search-input" placeholder="원두, 드리퍼 검색 (한/영 지원)" class="bg-zinc-900 border border-zinc-700 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 w-64 transition-all">
+                <input type="text" id="main-search-input" placeholder="원두, 드리퍼, 그라인더 검색..." class="bg-zinc-900 border border-zinc-700 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 w-64 transition-all">
             </div>
             
             <input type="file" id="csv-upload-input" accept=".csv" class="hidden">
@@ -80,7 +82,7 @@
         </main>
     </div>
 
-    <!-- 공유 모달 (완전 개편) -->
+    <!-- 공유 모달 (3단계 구조) -->
     <dialog id="shareModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-2xl m-auto overflow-hidden">
         <div class="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/50">
             <h2 class="text-lg font-bold flex items-center gap-2">✨ 레시피 클라우드 공유</h2>
@@ -91,7 +93,7 @@
         <div id="modal-step-1" class="p-6 md:p-8 flex flex-col gap-6">
             <div class="text-center mb-2">
                 <h3 class="text-xl font-bold text-white mb-2">어떤 방식으로 기록하시겠습니까?</h3>
-                <p class="text-sm text-zinc-400">직접 저울로 내리면서 기록하거나, 텍스트/스텝으로 자동 생성할 수 있습니다.</p>
+                <p class="text-sm text-zinc-400">직접 저울로 내리면서 기록하거나, 텍스트/표로 그래프를 생성할 수 있습니다.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onclick="window.location.href='Ttara-Pour.html'" class="bg-zinc-800 border border-zinc-700 hover:border-emerald-500 p-6 rounded-xl flex flex-col items-center gap-3 transition-all group">
@@ -124,15 +126,17 @@
             <!-- 수동 입력부 (Dynamic Table) -->
             <div>
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-white flex items-center gap-2">✍️ 추출 스텝 표 편집</h3>
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">✍️ 추출 스텝 직접 입력</h3>
                     <button type="button" onclick="addManualStep()" class="text-[11px] bg-zinc-800 border border-zinc-700 hover:bg-zinc-600 text-zinc-300 px-2 py-1 rounded transition-colors">+ 스텝 추가</button>
                 </div>
-                <div id="manual-steps-container" class="flex flex-col gap-2"></div>
+                <!-- 자바스크립트가 여기에 인풋창들을 생성함 -->
+                <div id="manual-steps-container" class="flex flex-col gap-2">
+                </div>
             </div>
 
             <div class="flex gap-3 mt-2">
                 <button type="button" onclick="goToStep('1')" class="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-sm font-bold transition-colors">뒤로</button>
-                <button type="button" onclick="processStepsToGraph()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">이 스텝으로 그래프 편집하기 ▶</button>
+                <button type="button" onclick="processStepsToGraph()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">이 스텝으로 그래프 생성 ▶</button>
             </div>
         </div>
 
@@ -162,23 +166,20 @@
                     <input type="text" id="f-author" placeholder="닉네임" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white" required>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">비밀번호</label>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">관리용 비밀번호</label>
                     <input type="password" id="f-pw" placeholder="삭제시 필요" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white" required>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두 종류 (국가/블렌드)</label>
+                    <input type="text" id="f-origin" placeholder="예: 에티오피아, 블렌드" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
+                </div>
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1.5">사용 기물(드리퍼)</label>
                     <div class="relative">
-                        <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white" required autocomplete="off">
+                        <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required autocomplete="off">
                         <ul id="dripper-dropdown" class="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg max-h-40 overflow-y-auto hidden shadow-xl"></ul>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두량 (g) / 온도(°C)</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
-                        <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
                     </div>
                 </div>
             </div>
@@ -195,10 +196,19 @@
                     <input type="text" id="f-grind-setting" placeholder="예: 24클릭" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500">
                 </div>
             </div>
-            
             <div>
                 <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 의도 (설명)</label>
                 <textarea id="f-desc" rows="2" placeholder="이 레시피가 타겟팅하는 맛이나 주의사항을 적어주세요." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 resize-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두 투입량 (g)</label>
+                    <input type="number" id="f-beans" placeholder="g" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 온도 (°C)</label>
+                    <input type="number" id="f-temp" placeholder="°C" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-sm text-white text-center" required>
+                </div>
             </div>
 
             <div class="mt-4 flex gap-3">
@@ -208,7 +218,7 @@
         </form>
     </dialog>
 
-    <!-- 레시피 상세 모달 -->
+    <!-- 레시피 상세 및 시도 리스트 모달 -->
     <dialog id="recipeModal" class="bg-zinc-950 text-white rounded-2xl shadow-2xl border border-zinc-700 p-0 w-[95%] max-w-xl m-auto overflow-hidden relative z-50">
         <div id="rm-bg" class="absolute top-0 left-0 w-full h-32 opacity-20 pointer-events-none"></div>
         <div class="p-5 border-b border-zinc-800 flex justify-between items-start relative z-10">
@@ -218,6 +228,7 @@
                     <span id="rm-author" class="text-zinc-300">👤 작성자</span>
                     <span class="text-zinc-600">|</span>
                     <span id="rm-dripper" class="text-indigo-300">드리퍼</span>
+                    <span id="rm-origin" class="px-2 py-0.5 bg-indigo-500/10 text-indigo-300 rounded border border-indigo-500/30">블렌드</span>
                     <span class="text-zinc-600">|</span>
                     <span id="rm-beans" class="text-emerald-300">15g</span>
                     <span id="rm-temp" class="text-rose-300">93°C</span>
@@ -244,6 +255,8 @@
                     </div>
                 </div>
             </div>
+
+            <p id="rm-desc" class="text-sm text-zinc-400 leading-relaxed bg-zinc-900/50 p-3 rounded-lg border border-zinc-800"></p>
 
             <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800">
                 <div class="flex justify-between items-center mb-2"><h3 class="text-xs font-bold text-zinc-500">추출 가이드라인</h3></div>
@@ -291,9 +304,9 @@
                 <h3 class="text-xs font-bold text-zinc-400 flex items-center gap-1">💬 댓글 (<span id="am-comment-count">0</span>)</h3>
                 <div id="am-comments-list" class="flex flex-col gap-2 min-h-[50px] max-h-40 overflow-y-auto pr-1"></div>
                 <form id="comment-form" class="mt-2 flex gap-2">
-                    <input type="text" id="fc-author" placeholder="닉네임" class="w-20 bg-zinc-900 border border-zinc-700 rounded-lg px-2 text-xs text-white focus:outline-none" required>
-                    <input type="text" id="fc-text" placeholder="피드백 남기기!" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none" required>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-bold">등록</button>
+                    <input type="text" id="fc-author" placeholder="닉네임" class="w-20 bg-zinc-900 border border-zinc-700 rounded-lg px-2 text-xs text-white focus:outline-none focus:border-indigo-500" required>
+                    <input type="text" id="fc-text" placeholder="피드백 남기기!" class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" required>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors">등록</button>
                 </form>
             </div>
         </div>
@@ -314,16 +327,14 @@
             { name: "Timemore C2/C3", kor: "타임모어 C2/C3", step: 38 },
             { name: "1Zpresso JX-Pro", kor: "1Zpresso JX-Pro", step: 12.5 },
             { name: "1Zpresso K-Ultra", kor: "1Zpresso K-Ultra", step: 20 },
-            { name: "Kingrinder K6", kor: "킹그라인더 K6", step: 16 },
-            { name: "Fellow Ode Gen 2", kor: "펠로우 오드 Gen 2", step: 33 },
-            { name: "Niche Zero", kor: "니체 제로", step: 25 },
-            { name: "Kinu M47", kor: "키누 M47", step: 10 }
+            { name: "Kingrinder K6", kor: "킹그라인더 K6", step: 16 }
         ];
 
         const mockRecipes = [
             { 
-              id: 'm1_v5', title: '클래식 V60 스탠다드', author: '마스터', dripper: 'Hario V60', grinder: 'Comandante C40', grindSetting: '24클릭',
-              beans: 15, temp: 93, likes: 120, color: '#ef4444', steps: [{t:0,w:0}, {t:10,w:50}, {t:40,w:50}, {t:50,w:150}, {t:90,w:150}, {t:100,w:250}], 
+              id: 'm1_v5', title: '클래식 V60 스탠다드', author: '마스터', dripper: 'Hario V60', grinder: '코만단테 C40', grindSetting: '24클릭', origin: '에티오피아',
+              beans: 15, temp: 93, likes: 120, color: '#ef4444', desc: "가장 기본적인 푸어오버 레시피입니다. 3번에 걸쳐 물을 부어 밸런스를 맞춥니다.", 
+              steps: [{t:0,w:0}, {t:10,w:50}, {t:40,w:50}, {t:50,w:150}, {t:90,w:150}, {t:100,w:250}], 
               attempts: [{ id: 'att_1', author: '커린이', rating: 4, score: 88, date: Date.now(), data: [{t:0,w:0}, {t:12,w:55}, {t:42,w:55}, {t:55,w:160}, {t:95,w:160}, {t:110,w:260}], comments: [] }] 
             }
         ];
@@ -383,7 +394,6 @@
         };
 
         window.processStepsToGraph = function() {
-            // 시간순 정렬
             manualSteps.sort((a,b) => a.t - b.t);
             editorSteps = manualSteps.map(s => ({ t: s.t, w: s.w }));
             goToStep('form');
@@ -417,23 +427,24 @@
 
             eCtx.clearRect(0, 0, w, h);
 
+            const getX = (t) => padX + (t / editorMaxT) * dW;
+            const getY = (wg) => padY + dH - (wg / editorMaxW) * dH;
+
             // 라인 그리기
             eCtx.beginPath(); 
             eCtx.strokeStyle = '#10b981'; // Emerald
             eCtx.lineWidth = 3; 
             eCtx.lineJoin = 'round';
             editorSteps.forEach((s, i) => {
-                const px = padX + (s.t / editorMaxT) * dW;
-                const py = padY + dH - (s.w / editorMaxW) * dH;
-                if(i===0) eCtx.moveTo(px, py);
-                else eCtx.lineTo(px, py);
+                if(i===0) eCtx.moveTo(getX(s.t), getY(s.w));
+                else eCtx.lineTo(getX(s.t), getY(s.w));
             });
             eCtx.stroke();
 
-            // 노드(원) 그리기
+            // 노드 그리기
             editorSteps.forEach((s, i) => {
-                const px = padX + (s.t / editorMaxT) * dW;
-                const py = padY + dH - (s.w / editorMaxW) * dH;
+                const px = getX(s.t);
+                const py = getY(s.w);
                 
                 eCtx.beginPath();
                 if(i === hoverIdx || i === dragIdx) {
@@ -525,9 +536,8 @@
         eCanvas.addEventListener('touchstart', handlePointerDown, {passive: false});
         window.addEventListener('touchend', handlePointerUp);
 
-
         // ==========================================
-        // 모달 네비게이션 및 AI/CSV 연동
+        // 모달 네비게이션 및 AI 추출
         // ==========================================
         function goToStep(step) {
             document.getElementById('modal-step-1').classList.add('hidden');
@@ -549,13 +559,12 @@
 
         document.getElementById('btn-ai-extract').addEventListener('click', async () => {
             const userInput = document.getElementById('yt-url').value;
-            if (!userInput) return showToast('설명이나 유튜브 링크를 입력해주세요.');
+            if (!userInput) return showToast('추출 과정에 대한 설명이나 유튜브 링크를 입력해주세요.');
             
             document.getElementById('ai-spinner').classList.remove('hidden');
 
-            const systemPrompt = `당신은 바리스타 AI입니다. 사용자가 입력한 내용(유튜브 링크 또는 일상적인 텍스트)을 분석해 아래 JSON 구조만 반환하세요.
-            {"title":"레시피 제목","author":"작성자","dripper":"기구(Hario V60 등)","grinder":"그라인더(Comandante C40 등)","grindSetting":"분쇄도(24 clicks 등)","beans":15,"temp":93,"steps":[{"t":0,"w":0},{"t":40,"w":50},{"t":150,"w":250}]}
-            시간(t)은 초 단위, 무게(w)는 누적 그램(g) 단위입니다. 반드시 JSON 객체만 반환하세요.`;
+            const systemPrompt = `당신은 세계 최고의 바리스타 AI입니다. 사용자가 입력한 내용(유튜브 링크 또는 일상적인 텍스트)을 분석해 아래 JSON 구조만 반환하세요.
+            {"title":"레시피 제목","author":"유튜버/작성자","dripper":"기구(Hario V60 등)","grinder":"그라인더(Comandante C40 등)","grindSetting":"분쇄도(24 clicks 등)","beans":15,"temp":93,"steps":[{"t":0,"w":0},{"t":40,"w":50},{"t":150,"w":250}]}`;
             const apiKey = ""; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
@@ -586,12 +595,135 @@
             }
         });
 
+        // ==========================================
+        // 새 레시피 클라우드 폼 등록
+        // ==========================================
+        document.getElementById('recipe-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if(!editorSteps || editorSteps.length < 2) return showToast('그래프 데이터가 충분하지 않습니다.');
+
+            // 새 기물 등록 로직 (입력한 기물이 DB에 없다면 자동 추가)
+            const dripperVal = document.getElementById('f-dripper').value.trim();
+            let equips = initEquipmentDB();
+            if(!equips.includes(dripperVal)) {
+                equips.push(dripperVal);
+                localStorage.setItem('ttara_equipment', JSON.stringify(equips));
+                showToast(`'${dripperVal}' 기물이 새로 데이터베이스에 등록되었습니다.`);
+            }
+
+            const newRecipe = {
+                id: 'id_' + Date.now(),
+                title: document.getElementById('f-title').value,
+                author: document.getElementById('f-author').value,
+                password: document.getElementById('f-pw').value,
+                dripper: dripperVal,
+                grinder: document.getElementById('f-grinder').value,
+                grindSetting: document.getElementById('f-grind-setting').value,
+                origin: document.getElementById('f-origin').value || '블렌드',
+                desc: document.getElementById('f-desc').value, // 설명 필드 포함 완료
+                beans: Number(document.getElementById('f-beans').value),
+                temp: Number(document.getElementById('f-temp').value),
+                steps: editorSteps, 
+                attempts: [], likes: 0, color: '#10b981', createdAt: Date.now()
+            };
+
+            let recipes = getRecipes(); recipes.unshift(newRecipe);
+            localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
+            showToast('☁️ 성공적으로 등록되었습니다!');
+            document.getElementById('shareModal').close(); 
+            document.getElementById('recipe-form').reset();
+            document.getElementById('yt-url').value = '';
+            goToStep('1'); renderRecipes();
+        });
+
+        // ==========================================
+        // UI 유틸 (자동완성, 비교모달 등)
+        // ==========================================
+        function initEquipmentDB() {
+            let list = localStorage.getItem('ttara_equipment');
+            if(!list) {
+                list = ['Hario V60', 'Kalita Wave', 'Origami', 'Aeropress', 'Orea V3', 'NextLevel Pulsar', 'Hario Switch'];
+                localStorage.setItem('ttara_equipment', JSON.stringify(list));
+            }
+            return JSON.parse(list).sort();
+        }
+
+        // 한영 동의어 사전을 이용한 검색 기능 강화
+        const synonyms = { "하리오": "hario", "칼리타": "kalita", "오리가미": "origami", "코만단테": "comandante", "타임모어": "timemore" };
+        
+        function setupAutocomplete(inputId, dropdownId, dataFetchFn, onSelectFn) {
+            const input = document.getElementById(inputId); const dropdown = document.getElementById(dropdownId);
+            input.addEventListener('input', (e) => {
+                let query = e.target.value.toLowerCase().trim(); 
+                for (let k in synonyms) if(query.includes(k)) query = query.replace(k, synonyms[k]);
+                
+                const items = dataFetchFn(); dropdown.innerHTML = '';
+                if (!query) { dropdown.classList.add('hidden'); return; }
+                
+                let filtered = items.filter(item => { 
+                    let text = typeof item === 'object' ? `${item.kor} ${item.name}` : item; 
+                    text = text.toLowerCase();
+                    return text.includes(query) || (synonyms[query] && text.includes(synonyms[query])); 
+                });
+                
+                if (filtered.length > 0) {
+                    filtered.forEach(item => {
+                        const li = document.createElement('li'); li.className = 'px-3 py-2 hover:bg-zinc-700 cursor-pointer text-xs text-white transition-colors border-b border-zinc-700/50 last:border-0';
+                        li.textContent = typeof item === 'object' ? item.kor : item;
+                        li.onmousedown = () => { input.value = typeof item === 'object' ? item.kor : item; dropdown.classList.add('hidden'); if(onSelectFn) onSelectFn(item); };
+                        dropdown.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.className = 'px-3 py-2 text-zinc-400 text-xs italic';
+                    li.textContent = "목록에 없습니다. 이대로 저장됩니다.";
+                    dropdown.appendChild(li);
+                }
+                dropdown.classList.remove('hidden');
+            });
+            input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
+            input.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 150));
+        }
+
+        setupAutocomplete('f-dripper', 'dripper-dropdown', initEquipmentDB);
+        setupAutocomplete('f-grinder', 'grinder-dropdown', () => masterGrinderDB);
+        setupAutocomplete('convert-grinder-input', 'convert-dropdown', () => masterGrinderDB, (selectedTargetGrinder) => {
+            const resultEl = document.getElementById('convert-result');
+            const clicks = parseFloat(currentRecipeClicks.toString().replace(/[^0-9.]/g, ''));
+            if(isNaN(clicks)) return resultEl.textContent = "인식 불가";
+            const targetClicks = Math.round((clicks * currentRecipeGrinderObj.step) / selectedTargetGrinder.step);
+            resultEl.textContent = `약 ${targetClicks} 클릭`;
+        });
+
+        // 메인 검색창 로직 추가 (한영 동의어 검색 지원)
+        document.getElementById('main-search-input').addEventListener('input', (e) => {
+            let query = e.target.value.toLowerCase().trim();
+            for (let k in synonyms) if(query.includes(k)) query = query.replace(k, synonyms[k]);
+            
+            const allRecipes = getRecipes();
+            if (!query) { renderRecipes(); return; }
+            
+            const filtered = allRecipes.filter(r => {
+                const targetText = `${r.title} ${r.author} ${r.dripper} ${r.grinder || ''}`.toLowerCase();
+                return targetText.includes(query) || (synonyms[query] && targetText.includes(synonyms[query]));
+            });
+            
+            const gridEl = document.getElementById('recipe-grid');
+            gridEl.innerHTML = '';
+            if(filtered.length === 0) return gridEl.innerHTML = '<div class="col-span-full text-center py-10 text-zinc-500">일치하는 레시피가 없습니다.</div>';
+            filtered.forEach(recipe => renderRecipeCard(recipe, gridEl));
+        });
+
+        // CSV 업로드/다운로드 로직
         document.getElementById('btn-export-csv').addEventListener('click', () => {
             const recipes = getRecipes();
             if (recipes.length === 0) return showToast("백업할 데이터가 없습니다.");
-            let csvContent = '\uFEFFTitle,Author,Dripper,Grinder,GrindSetting,Beans(g),Temp(°C),Likes,CreatedAt,StepsJSON\n';
+            let csvContent = '\uFEFFTitle,Author,Dripper,Grinder,GrindSetting,Origin,Desc,Beans(g),Temp(°C),Likes,CreatedAt,StepsJSON\n';
             recipes.forEach(r => {
-                const row = [`"${r.title.replace(/"/g, '""')}"`, `"${r.author}"`, `"${r.dripper}"`, `"${r.grinder || ''}"`, `"${r.grindSetting || ''}"`, r.beans, r.temp, r.likes, r.createdAt || Date.now(), `"${JSON.stringify(r.steps).replace(/"/g, '""')}"`];
+                const row = [
+                    `"${r.title.replace(/"/g, '""')}"`, `"${r.author}"`, `"${r.dripper}"`, `"${r.grinder || ''}"`, `"${r.grindSetting || ''}"`,
+                    `"${r.origin || ''}"`, `"${(r.desc || '').replace(/"/g, '""')}"`, r.beans, r.temp, r.likes, r.createdAt || Date.now(), `"${JSON.stringify(r.steps).replace(/"/g, '""')}"`
+                ];
                 csvContent += row.join(",") + "\n";
             });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -626,10 +758,13 @@
                 if(rows.length < 2) return showToast('유효하지 않은 CSV 파일입니다.');
                 let recipes = getRecipes(); let addedCount = 0;
                 for(let i=1; i<rows.length; i++) {
-                    const r = rows[i]; if(r.length < 9 || !r[0]) continue; 
+                    const r = rows[i]; if(r.length < 12 || !r[0]) continue; 
                     try {
                         recipes.push({
-                            id: 'id_csv_' + Date.now() + Math.random().toString(36).substr(2, 5), title: r[0], author: r[1], dripper: r[2], grinder: r[3], grindSetting: r[4], beans: Number(r[5]), temp: Number(r[6]), likes: Number(r[7]), createdAt: Date.now(), steps: JSON.parse(r[9]), attempts: [], color: '#6366f1'
+                            id: 'id_csv_' + Date.now() + Math.random().toString(36).substr(2, 5), 
+                            title: r[0], author: r[1], dripper: r[2], grinder: r[3], grindSetting: r[4], 
+                            origin: r[5], desc: r[6], beans: Number(r[7]), temp: Number(r[8]), 
+                            likes: Number(r[9]), createdAt: Date.now(), steps: JSON.parse(r[11]), attempts: [], color: '#6366f1'
                         });
                         addedCount++;
                     } catch(err) {}
@@ -641,111 +776,6 @@
             reader.readAsText(file, "UTF-8");
         });
 
-        // ==========================================
-        // 새 레시피 폼 제출
-        // ==========================================
-        document.getElementById('recipe-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            if(!editorSteps || editorSteps.length < 2) return showToast('그래프 데이터가 충분하지 않습니다.');
-
-            const newRecipe = {
-                id: 'id_' + Date.now(),
-                title: document.getElementById('f-title').value,
-                author: document.getElementById('f-author').value,
-                password: document.getElementById('f-pw').value,
-                dripper: document.getElementById('f-dripper').value,
-                grinder: document.getElementById('f-grinder').value,
-                grindSetting: document.getElementById('f-grind-setting').value,
-                desc: document.getElementById('f-desc').value, // 설명(desc) 필드 저장 추가
-                beans: Number(document.getElementById('f-beans').value),
-                temp: Number(document.getElementById('f-temp').value),
-                steps: editorSteps, 
-                attempts: [], likes: 0, color: '#10b981', createdAt: Date.now()
-            };
-
-            let recipes = getRecipes(); recipes.unshift(newRecipe);
-            localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
-            showToast('☁️ 성공적으로 등록되었습니다!');
-            document.getElementById('shareModal').close(); 
-            document.getElementById('recipe-form').reset();
-            document.getElementById('yt-url').value = '';
-            goToStep('1'); renderRecipes();
-        });
-
-        // ==========================================
-        // 검색 및 자동완성 유틸
-        // ==========================================
-        function initEquipmentDB() {
-            let list = localStorage.getItem('ttara_equipment');
-            if(!list) {
-                list = ['Hario V60', 'Kalita Wave', 'Origami', 'Aeropress'];
-                localStorage.setItem('ttara_equipment', JSON.stringify(list));
-            }
-            return JSON.parse(list).sort();
-        }
-
-        // 한/영 동의어 사전을 이용한 검색 (예: 하리오 = hario)
-        const synonyms = { "하리오": "hario", "칼리타": "kalita", "오리가미": "origami", "코만단테": "comandante", "타임모어": "timemore" };
-        function setupAutocomplete(inputId, dropdownId, dataFetchFn, onSelectFn) {
-            const input = document.getElementById(inputId); const dropdown = document.getElementById(dropdownId);
-            input.addEventListener('input', (e) => {
-                let query = e.target.value.toLowerCase().trim(); 
-                for (let k in synonyms) if(query.includes(k)) query = query.replace(k, synonyms[k]);
-                
-                const items = dataFetchFn(); dropdown.innerHTML = '';
-                if (!query) { dropdown.classList.add('hidden'); return; }
-                
-                let filtered = items.filter(item => { 
-                    let text = typeof item === 'object' ? `${item.kor} ${item.name}` : item; 
-                    text = text.toLowerCase();
-                    return text.includes(query) || (synonyms[query] && text.includes(synonyms[query])); 
-                });
-                
-                if (filtered.length > 0) {
-                    filtered.forEach(item => {
-                        const li = document.createElement('li'); li.className = 'px-3 py-2 hover:bg-zinc-700 cursor-pointer text-xs text-white transition-colors border-b border-zinc-700/50';
-                        li.textContent = typeof item === 'object' ? item.kor : item;
-                        li.onmousedown = () => { input.value = typeof item === 'object' ? item.kor : item; dropdown.classList.add('hidden'); if(onSelectFn) onSelectFn(item); };
-                        dropdown.appendChild(li);
-                    });
-                }
-                dropdown.classList.remove('hidden');
-            });
-            input.addEventListener('focus', () => input.dispatchEvent(new Event('input')));
-            input.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 150));
-        }
-
-        setupAutocomplete('f-dripper', 'dripper-dropdown', initEquipmentDB);
-        setupAutocomplete('f-grinder', 'grinder-dropdown', () => masterGrinderDB);
-        setupAutocomplete('convert-grinder-input', 'convert-dropdown', () => masterGrinderDB, (selectedTargetGrinder) => {
-            const resultEl = document.getElementById('convert-result');
-            const clicks = parseFloat(currentRecipeClicks.toString().replace(/[^0-9.]/g, ''));
-            if(isNaN(clicks)) return resultEl.textContent = "인식 불가";
-            const targetClicks = Math.round((clicks * currentRecipeGrinderObj.step) / selectedTargetGrinder.step);
-            resultEl.textContent = `약 ${targetClicks} 클릭`;
-        });
-
-        // 메인 검색창 로직
-        document.getElementById('main-search-input').addEventListener('input', (e) => {
-            let query = e.target.value.toLowerCase().trim();
-            for (let k in synonyms) if(query.includes(k)) query = query.replace(k, synonyms[k]);
-            
-            const allRecipes = getRecipes();
-            if (!query) { renderRecipes(); return; }
-            
-            const filtered = allRecipes.filter(r => {
-                const targetText = `${r.title} ${r.author} ${r.dripper} ${r.grinder || ''}`.toLowerCase();
-                return targetText.includes(query) || (synonyms[query] && targetText.includes(synonyms[query]));
-            });
-            
-            const gridEl = document.getElementById('recipe-grid');
-            gridEl.innerHTML = '';
-            filtered.forEach(recipe => renderRecipeCard(recipe, gridEl));
-        });
-
-        // ==========================================
-        // 렌더링 및 모달 연동
-        // ==========================================
         function generatePath(steps) {
             if (!steps || steps.length === 0) return 'M0,50 L100,50';
             let path = 'M0,50 '; const maxT = steps[steps.length - 1].t || 1; const maxW = steps[steps.length - 1].w || 1;
@@ -758,15 +788,14 @@
             card.onclick = () => openRecipeModal(recipe.id);
             const timeStr = recipe.steps && recipe.steps.length > 0 ? recipe.steps[recipe.steps.length-1].t + 's' : '-';
             const ratio = (recipe.beans && recipe.steps[recipe.steps.length-1].w) ? (recipe.steps[recipe.steps.length-1].w / recipe.beans).toFixed(1) : '-';
-            const grinderBadge = recipe.grinder ? `<span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded text-[10px] truncate max-w-[100px]">${recipe.grinder}</span>` : '';
-            
+            const grinderBadge = recipe.grinder ? `<span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded text-[10px] font-medium border border-amber-500/20 truncate max-w-[100px]">${recipe.grinder}</span>` : '';
             card.innerHTML = `
                 <div class="h-28 bg-zinc-900/50 relative overflow-hidden flex items-end p-2 border-b border-zinc-800">
                     <div class="absolute inset-0 opacity-20" style="background: linear-gradient(180deg, transparent 0%, ${recipe.color} 100%);"></div>
                     <svg class="w-full h-full absolute inset-0" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="${generatePath(recipe.steps)}" fill="none" stroke="${recipe.color}" stroke-width="2" class="graph-line"></path></svg>
                     <div class="absolute top-2 right-2 bg-black/60 backdrop-blur rounded px-2 py-0.5 text-[10px] text-white border border-zinc-700">${timeStr}</div>
                 </div>
-                <div class="p-4 flex-1 flex flex-col"><h3 class="text-sm font-bold text-white line-clamp-1 mb-1">${recipe.title}</h3><div class="text-xs text-zinc-400 mb-3">👤 ${recipe.author}</div><div class="flex flex-wrap gap-1.5 mb-4"><span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px]">${recipe.dripper}</span><span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px]">${recipe.beans}g (1:${ratio})</span>${grinderBadge}</div></div>
+                <div class="p-4 flex-1 flex flex-col"><h3 class="text-sm font-bold text-white line-clamp-1 mb-1">${recipe.title}</h3><div class="text-xs text-zinc-400 mb-3">👤 ${recipe.author}</div><div class="flex flex-wrap gap-1.5 mb-4"><span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] border border-zinc-700 font-medium">${recipe.dripper}</span><span class="px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded text-[10px] border border-zinc-700 font-medium">${recipe.beans}g (1:${ratio})</span>${grinderBadge}</div></div>
             `;
             container.appendChild(card);
         }
@@ -782,6 +811,15 @@
         function openRecipeModal(recipeId) {
             const r = getRecipes().find(x => x.id === recipeId); if(!r) return;
             document.getElementById('rm-title').textContent = r.title; document.getElementById('rm-author').textContent = `👤 ${r.author}`; document.getElementById('rm-dripper').textContent = r.dripper; document.getElementById('rm-beans').textContent = `${r.beans}g`; document.getElementById('rm-temp').textContent = `${r.temp}°C`;
+            
+            let originHtml = document.getElementById('rm-origin');
+            if(!originHtml) {
+                const badge = document.createElement('span'); badge.id = 'rm-origin'; badge.className = 'px-2 py-0.5 bg-indigo-500/10 text-indigo-300 rounded border border-indigo-500/30';
+                document.getElementById('rm-author').parentElement.insertBefore(badge, document.getElementById('rm-beans')); originHtml = badge;
+            }
+            originHtml.textContent = r.origin || '블렌드';
+            document.getElementById('rm-desc').textContent = r.desc || "상세 설명이 없습니다.";
+
             const converterSection = document.getElementById('grinder-converter-section');
             if (r.grinder && r.grindSetting) {
                 document.getElementById('rm-grinder').textContent = r.grinder; document.getElementById('rm-grind-setting').textContent = `- ${r.grindSetting}`;
@@ -793,23 +831,33 @@
             if (!r.attempts || r.attempts.length === 0) { attemptsList.innerHTML = '<div class="text-center text-xs text-zinc-500 py-3">첫 번째로 도전해보세요!</div>'; document.getElementById('rm-avg-rating').textContent = '-'; } 
             else {
                 let total = 0; attemptsList.innerHTML = '';
-                r.attempts.forEach(att => { total += att.rating; attemptsList.innerHTML += `<div onclick="openAttemptModal('${r.id}', '${att.id}')" class="flex justify-between items-center bg-zinc-900 p-2.5 rounded-lg border border-zinc-800 hover:border-indigo-500/50 cursor-pointer"><div><span class="text-yellow-400 text-xs">${'★'.repeat(att.rating)}${'☆'.repeat(5-att.rating)}</span><span class="text-zinc-300 text-xs ml-2">${att.author}</span></div><span class="text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded">일치율 ${att.score}%</span></div>`; });
+                r.attempts.forEach(att => { total += att.rating; const stars = '★'.repeat(att.rating) + '☆'.repeat(5 - att.rating); attemptsList.innerHTML += `<div onclick="openAttemptModal('${r.id}', '${att.id}')" class="flex justify-between items-center bg-zinc-900 p-2.5 rounded-lg border border-zinc-800 hover:border-indigo-500/50 cursor-pointer transition-colors group"><div class="flex items-center gap-2"><span class="text-yellow-400 text-[10px] sm:text-xs">${stars}</span><span class="text-zinc-300 font-medium group-hover:text-white transition-colors">${att.author}</span></div><div class="flex items-center gap-2"><span class="text-zinc-500 text-[10px] hidden sm:inline">💬 ${att.comments ? att.comments.length : 0}</span><span class="text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">일치율 ${att.score}%</span></div></div>`; });
                 document.getElementById('rm-avg-rating').textContent = (total / r.attempts.length).toFixed(1);
             }
-            document.getElementById('rm-svg').innerHTML = `<path d="${generatePath(r.steps)}" fill="none" stroke="${r.color}" stroke-width="2"></path>`;
+            document.getElementById('rm-svg').innerHTML = `<path d="${generatePath(r.steps)}" fill="none" stroke="${r.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="graph-line"></path>`;
             document.getElementById('rm-start-btn').onclick = () => window.location.href = `Ttara-Pour.html?recipeId=${r.id}`; document.getElementById('recipeModal').showModal();
         }
 
         let currentViewingAttempt = { rId: null, attId: null };
         function openAttemptModal(rId, attId) {
             const r = getRecipes().find(x => x.id === rId); const att = r.attempts.find(x => x.id === attId); currentViewingAttempt = { rId, attId };
-            document.getElementById('am-author-title').textContent = att.author; document.getElementById('am-rating').textContent = '★'.repeat(att.rating) + '☆'.repeat(5-att.rating); document.getElementById('am-score').textContent = att.score + '%'; document.getElementById('attemptModal').showModal();
+            document.getElementById('am-author-title').textContent = att.author; document.getElementById('am-rating').textContent = '★'.repeat(att.rating) + '☆'.repeat(5-att.rating);
+            const scoreEl = document.getElementById('am-score'); scoreEl.textContent = att.score + '%';
+            if(att.score >= 90) scoreEl.className = "text-emerald-400 text-base font-bold"; else if(att.score >= 70) scoreEl.className = "text-yellow-400 text-base font-bold"; else scoreEl.className = "text-rose-400 text-base font-bold";
+            document.getElementById('attemptModal').showModal();
             setTimeout(() => { const canvas = document.getElementById('attemptChart'); const ctx = canvas.getContext('2d'); canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; ctx.clearRect(0,0, canvas.width, canvas.height); const padX = 20, padY = 10; const dW = canvas.width - padX * 2, dH = canvas.height - padY * 2; let maxT = 30, maxW = 50; if(r.steps.length) { maxT = Math.max(maxT, r.steps[r.steps.length-1].t); maxW = Math.max(maxW, r.steps[r.steps.length-1].w); } if(att.data.length) { maxT = Math.max(maxT, att.data[att.data.length-1].t); maxW = Math.max(maxW, Math.max(...att.data.map(d=>d.w))); } maxT += 10; maxW = Math.ceil(maxW/20)*20; const getX = (t) => padX + (t / maxT) * dW; const getY = (wg) => padY + dH - (wg / maxW) * dH; if (r.steps.length) { ctx.beginPath(); ctx.strokeStyle = 'rgba(99, 102, 241, 0.7)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); r.steps.forEach((s, i) => { if(i===0) ctx.moveTo(getX(s.t), getY(s.w)); else ctx.lineTo(getX(s.t), getY(s.w)); }); ctx.stroke(); ctx.setLineDash([]); } if (att.data.length) { ctx.beginPath(); ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; att.data.forEach((s, i) => { if(i===0) ctx.moveTo(getX(s.t), getY(s.w)); else ctx.lineTo(getX(s.t), getY(s.w)); }); ctx.stroke(); } }, 100);
-            const listEl = document.getElementById('am-comments-list'); listEl.innerHTML = ''; document.getElementById('am-comment-count').textContent = (att.comments || []).length; (att.comments || []).forEach(c => { listEl.innerHTML += `<div class="bg-zinc-800/50 p-2 rounded-lg text-xs"><span class="font-bold text-indigo-300">${c.author}</span> <span class="text-zinc-200">${c.text}</span></div>`; });
+            renderComments(att.comments || []);
+        }
+
+        function renderComments(comments) {
+            const listEl = document.getElementById('am-comments-list'); document.getElementById('am-comment-count').textContent = comments.length; listEl.innerHTML = '';
+            if (comments.length === 0) return listEl.innerHTML = '<div class="text-[11px] text-zinc-500 py-2">아직 작성된 댓글이 없습니다.</div>';
+            comments.forEach(c => { listEl.innerHTML += `<div class="bg-zinc-800/50 p-2 rounded-lg text-xs flex flex-col gap-0.5"><span class="font-bold text-indigo-300">${c.author}</span><span class="text-zinc-200">${c.text}</span></div>`; });
+            listEl.scrollTop = listEl.scrollHeight;
         }
 
         document.getElementById('comment-form').addEventListener('submit', (e) => {
-            e.preventDefault(); const { rId, attId } = currentViewingAttempt; let recipes = getRecipes(); let rIdx = recipes.findIndex(r => r.id === rId); let attIdx = recipes[rIdx].attempts.findIndex(a => a.id === attId); if (!recipes[rIdx].attempts[attIdx].comments) recipes[rIdx].attempts[attIdx].comments = []; recipes[rIdx].attempts[attIdx].comments.push({ author: document.getElementById('fc-author').value, text: document.getElementById('fc-text').value, date: Date.now() }); localStorage.setItem('ttara_recipes', JSON.stringify(recipes)); document.getElementById('fc-text').value = ''; openAttemptModal(rId, attId);
+            e.preventDefault(); const { rId, attId } = currentViewingAttempt; let recipes = getRecipes(); let rIdx = recipes.findIndex(r => r.id === rId); let attIdx = recipes[rIdx].attempts.findIndex(a => a.id === attId); if (!recipes[rIdx].attempts[attIdx].comments) recipes[rIdx].attempts[attIdx].comments = []; recipes[rIdx].attempts[attIdx].comments.push({ author: document.getElementById('fc-author').value, text: document.getElementById('fc-text').value, date: Date.now() }); localStorage.setItem('ttara_recipes', JSON.stringify(recipes)); document.getElementById('fc-text').value = ''; renderComments(recipes[rIdx].attempts[attIdx].comments); openRecipeModal(rId);
         });
         
         renderRecipes();
