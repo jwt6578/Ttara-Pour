@@ -195,9 +195,14 @@
                     <input type="text" id="f-grind-setting" placeholder="예: 24클릭" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500">
                 </div>
             </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 의도 (설명)</label>
+                <textarea id="f-desc" rows="2" placeholder="이 레시피가 타겟팅하는 맛이나 주의사항을 적어주세요." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 resize-none"></textarea>
+            </div>
 
             <div class="mt-4 flex gap-3">
-                <button type="button" onclick="goToStep('2')" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold">표 수정으로 돌아가기</button>
+                <button type="button" onclick="goToStep('2')" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold">다시 스텝 고치기</button>
                 <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/25">클라우드에 최종 등록</button>
             </div>
         </form>
@@ -643,22 +648,15 @@
             e.preventDefault();
             if(!editorSteps || editorSteps.length < 2) return showToast('그래프 데이터가 충분하지 않습니다.');
 
-            const dripperVal = document.getElementById('f-dripper').value.trim();
-            let equips = initEquipmentDB();
-            if(!equips.includes(dripperVal)) {
-                equips.push(dripperVal);
-                localStorage.setItem('ttara_equipment', JSON.stringify(equips));
-                showToast(`'${dripperVal}' 기물이 등록되었습니다.`);
-            }
-
             const newRecipe = {
                 id: 'id_' + Date.now(),
                 title: document.getElementById('f-title').value,
                 author: document.getElementById('f-author').value,
                 password: document.getElementById('f-pw').value,
-                dripper: dripperVal,
+                dripper: document.getElementById('f-dripper').value,
                 grinder: document.getElementById('f-grinder').value,
                 grindSetting: document.getElementById('f-grind-setting').value,
+                desc: document.getElementById('f-desc').value, // 설명(desc) 필드 저장 추가
                 beans: Number(document.getElementById('f-beans').value),
                 temp: Number(document.getElementById('f-temp').value),
                 steps: editorSteps, 
