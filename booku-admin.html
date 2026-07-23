@@ -1,40 +1,135 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ttara-Pour Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #09090b; color: #f8fafc; }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="p-4 sm:p-6">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-zinc-800 pb-4 gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                    <span class="text-rose-500">🛡️</span> Ttara-Pour Admin
+                </h1>
+                <p class="text-[11px] sm:text-sm text-zinc-400 mt-1">로컬 스토리지에 저장된 레시피 및 추출 기물 통합 관리</p>
+            </div>
+            <button onclick="window.location.href='index.html'" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap">커뮤니티로 돌아가기</button>
+        </header>
+
+        <!-- 탭 네비게이션 -->
+        <div class="flex gap-4 mb-6 border-b border-zinc-800 pb-2">
+            <button id="tab-btn-recipes" onclick="switchTab('recipes')" class="text-rose-400 font-bold px-3 py-1.5 border-b-2 border-rose-500 transition-colors text-sm">레시피 관리</button>
+            <button id="tab-btn-equip" onclick="switchTab('equip')" class="text-zinc-500 font-bold px-3 py-1.5 hover:text-white transition-colors text-sm">추출 기물 관리</button>
+        </div>
+
+        <!-- 1. 레시피 관리 섹션 -->
+        <div id="sec-recipes" class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto shadow-2xl">
+            <table class="w-full text-left text-xs sm:text-sm text-zinc-400 min-w-[600px]">
+                <thead class="bg-zinc-800/50 text-[10px] sm:text-xs uppercase text-zinc-300">
+                    <tr>
+                        <th class="px-4 sm:px-6 py-3">레시피명</th>
+                        <th class="px-4 sm:px-6 py-3">기여자</th>
+                        <th class="px-4 sm:px-6 py-3">기물</th>
+                        <th class="px-4 sm:px-6 py-3">원두/온도</th>
+                        <th class="px-4 sm:px-6 py-3 text-right">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-tbody" class="divide-y divide-zinc-800/50">
+                    <!-- Javascript Data -->
+                </tbody>
+            </table>
+        </div>
+
         <!-- 2. 추출 기물(도구) 관리 섹션 -->
         <div id="sec-equip" class="hidden bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-4 sm:p-6">
-            
-            <!-- 활성화된 기물 (태그 UI) -->
-            <div class="mb-6">
-                <h3 class="text-base sm:text-lg font-bold text-white flex items-center justify-between">
-                    <span>✅ 활성화된 추천 기물</span>
-                    <span id="active-equip-count" class="bg-indigo-500/20 text-indigo-400 text-xs py-1 px-2 rounded-full border border-indigo-500/30">0개</span>
-                </h3>
-                <p class="text-[10px] sm:text-xs text-zinc-400 mt-1 mb-3">레시피 작성 폼에서 자동완성으로 뜰 도구들입니다. 태그를 클릭하면 삭제됩니다.</p>
-                <div id="active-equip-tags" class="flex flex-wrap gap-2 min-h-[60px] p-4 bg-zinc-950 rounded-xl border border-zinc-800">
-                    <!-- 태그 렌더링 영역 -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-white">등록된 기물 목록</h3>
+                    <p class="text-[10px] sm:text-xs text-zinc-400 mt-1">이곳에 등록된 기물은 레시피 작성 시 자동완성으로 추천됩니다.</p>
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <input type="text" id="new-equip-input" placeholder="새 기물 이름 입력" class="flex-1 sm:w-auto bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-rose-500">
+                    <button onclick="addEquip()" class="bg-rose-600 hover:bg-rose-500 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors whitespace-nowrap">목록 추가</button>
                 </div>
             </div>
-
-            <hr class="border-zinc-800 my-6">
-
-            <!-- 검색 및 카탈로그 영역 -->
-            <div>
-                <h3 class="text-base sm:text-lg font-bold text-white mb-1">🔍 기물 검색 및 카탈로그</h3>
-                <p class="text-[10px] sm:text-xs text-zinc-400 mb-4">카탈로그를 클릭하거나 검색해서 목록에 추가하세요.</p>
-                
-                <div class="relative mb-6">
-                    <input type="text" id="equip-search-input" placeholder="한글 또는 영어로 기물 검색 (예: 하리오, v60)" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors shadow-inner" autocomplete="off">
-                    <ul id="equip-autocomplete-list" class="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-48 overflow-y-auto hidden"></ul>
-                </div>
-                
-                <div id="catalog-container" class="space-y-6 max-h-[500px] overflow-y-auto pr-2">
-                    <!-- 카탈로그 렌더링 영역 -->
-                </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs sm:text-sm text-zinc-400 border border-zinc-800 rounded-lg overflow-hidden min-w-[300px]">
+                    <thead class="bg-zinc-800/50 text-[10px] sm:text-xs uppercase text-zinc-300">
+                        <tr>
+                            <th class="px-4 sm:px-6 py-3">기물(도구) 명칭</th>
+                            <th class="px-4 sm:px-6 py-3 text-right">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equip-tbody" class="divide-y divide-zinc-800/50">
+                        <!-- Javascript Data -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- 삭제 비밀번호 확인 모달 -->
-<!-- ... existing code ... -->
+    <!-- 삭제 모달 -->
+    <dialog id="deleteModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-5 sm:p-6 w-[90%] max-w-sm m-auto">
+        <h3 class="text-base sm:text-lg font-bold mb-2 text-rose-400">레시피 삭제</h3>
+        <p class="text-xs sm:text-sm text-zinc-400 mb-4">해당 레시피를 삭제하려면 작성 시 입력한 비밀번호를 확인해주세요.</p>
+        <input type="password" id="del-pw" placeholder="비밀번호" class="w-full bg-black/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white mb-4 outline-none focus:border-rose-500">
+        <div class="flex gap-2">
+            <button onclick="document.getElementById('deleteModal').close()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-sm transition-colors">취소</button>
+            <button id="btn-confirm-delete" class="flex-1 bg-rose-600 hover:bg-rose-500 py-2 rounded-xl text-sm font-bold transition-colors">삭제하기</button>
+        </div>
+    </dialog>
+
+    <script>
+        let currentDeleteId = null;
+        let currentDeletePw = null;
+
+        function loadAdminData() {
+            const tbody = document.getElementById('admin-tbody');
+            const data = localStorage.getItem('ttara_recipes');
+            
+            if(!data || JSON.parse(data).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-zinc-500 text-xs sm:text-sm">등록된 레시피가 없습니다.</td></tr>';
+                return;
+            }
+
+            const recipes = JSON.parse(data);
+            tbody.innerHTML = '';
+            
+            recipes.forEach((recipe) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-zinc-800/30 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium text-white">${recipe.title}</td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4">${recipe.author}</td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4">${recipe.dripper}</td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4">${recipe.beans}g / ${recipe.temp}°C</td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-right">
+                        ${recipe.id.startsWith('m') ? 
+                            '<span class="text-[10px] sm:text-xs text-zinc-600">기본 제공</span>' : 
+                            `<button class="text-[10px] sm:text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded transition-colors del-btn" data-id="${recipe.id}" data-pw="${recipe.password}">삭제</button>`
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.del-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentDeleteId = e.target.dataset.id;
+                    currentDeletePw = e.target.dataset.pw;
+                    document.getElementById('del-pw').value = '';
+                    document.getElementById('deleteModal').showModal();
+                });
+            });
+        }
+
         document.getElementById('btn-confirm-delete').addEventListener('click', () => {
             const inputPw = document.getElementById('del-pw').value;
             if(inputPw !== currentDeletePw) {
@@ -43,47 +138,13 @@
                 return;
             }
             
-            let recipes = JSON.parse(localStorage.getItem('buku_recipes'));
+            let recipes = JSON.parse(localStorage.getItem('ttara_recipes'));
             recipes = recipes.filter(r => r.id !== currentDeleteId);
-            localStorage.setItem('buku_recipes', JSON.stringify(recipes));
+            localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
             
             document.getElementById('deleteModal').close();
             loadAdminData();
         });
-
-        // ==========================================
-        // 2. 기물(Equipment) 관리 로직 (전면 개편)
-        // ==========================================
-        
-        // 전체 카탈로그 데이터베이스
-        const coffeeToolsData = [
-            { id: "v60", name: "Hario V60", kor: "하리오 V60", category: "원추형 (Conical)" },
-            { id: "v60_neo", name: "Hario V60 NEO", kor: "하리오 V60 네오", category: "원추형 (Conical)" },
-            { id: "mugen", name: "Hario Mugen", kor: "하리오 무겐", category: "원추형 (Conical)" },
-            { id: "origami", name: "Origami Dripper", kor: "오리가미 드리퍼", category: "원추형 (Conical)" },
-            { id: "kono", name: "Kono Meimon", kor: "고노 명문", category: "원추형 (Conical)" },
-            { id: "ct62", name: "CT62 Dripper", kor: "CT62 드리퍼", category: "원추형 (Conical)" },
-            { id: "chemex", name: "Chemex", kor: "케멕스", category: "원추형 (Conical)" },
-            
-            { id: "kalita_wave", name: "Kalita Wave", kor: "칼리타 웨이브", category: "플랫바텀 (Flat)" },
-            { id: "kalita_tsubame", name: "Kalita Tsubame", kor: "칼리타 츠바메", category: "플랫바텀 (Flat)" },
-            { id: "orea_v3", name: "Orea V3", kor: "오레아 V3", category: "플랫바텀 (Flat)" },
-            { id: "orea_v4", name: "Orea V4", kor: "오레아 V4", category: "플랫바텀 (Flat)" },
-            { id: "april", name: "April Brewer", kor: "에이프릴 브루어", category: "플랫바텀 (Flat)" },
-            { id: "stagg_x", name: "Fellow Stagg X", kor: "펠로우 스태그 X", category: "플랫바텀 (Flat)" },
-            { id: "b75", name: "Timemore B75", kor: "타임모어 B75", category: "플랫바텀 (Flat)" },
-            
-            { id: "clever", name: "Clever", kor: "클레버", category: "침출 & 특수" },
-            { id: "pulsar", name: "NextLevel Pulsar", kor: "펄사 브루어", category: "침출 & 특수" },
-            { id: "tricolate", name: "Tricolate", kor: "트리콜레이트", category: "침출 & 특수" },
-            { id: "aeropress", name: "Aeropress", kor: "에어로프레스", category: "침출 & 특수" },
-            
-            { id: "switch_02", name: "Hario Switch 02", kor: "하리오 스위치 02", category: "스위치 호환" },
-            { id: "switch_03", name: "Hario Switch 03", kor: "하리오 스위치 03", category: "스위치 호환" },
-            { id: "switch_mugen", name: "Mugen + Switch", kor: "무겐 스위치", category: "스위치 호환" },
-            
-            { id: "espresso", name: "Espresso", kor: "에스프레소", category: "기타" }
-        ];
 
         function switchTab(tab) {
             const btnRecipes = document.getElementById('tab-btn-recipes');
@@ -106,147 +167,52 @@
             }
         }
 
-        // 활성화된 기물 태그 렌더링
         function loadEquipments() {
-            const tagsContainer = document.getElementById('active-equip-tags');
-            const countBadge = document.getElementById('active-equip-count');
-            
-            let list = JSON.parse(localStorage.getItem('buku_equipment') || '[]');
-            if(list.length === 0) {
-                list = ['Hario V60', 'Kalita Wave', 'Origami', 'Aeropress', 'Orea V3', 'NextLevel Pulsar', 'Hario Switch 02'];
-                localStorage.setItem('buku_equipment', JSON.stringify(list));
-            }
-
-            tagsContainer.innerHTML = '';
-            countBadge.textContent = `${list.length}개`;
+            const tbody = document.getElementById('equip-tbody');
+            let list = JSON.parse(localStorage.getItem('ttara_equipment') || '[]');
             
             if(list.length === 0) {
-                tagsContainer.innerHTML = '<span class="text-xs text-zinc-600 italic py-2">등록된 기물이 없습니다.</span>';
-            } else {
-                list.sort().forEach(eqName => {
-                    const tag = document.createElement('div');
-                    tag.className = 'inline-flex items-center bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-all hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/50 cursor-pointer';
-                    tag.innerHTML = `
-                        ${eqName}
-                        <span class="ml-2 opacity-50 hover:opacity-100">✖</span>
-                    `;
-                    // 태그 클릭 시 삭제
-                    tag.addEventListener('click', () => deleteEquip(eqName));
-                    tagsContainer.appendChild(tag);
-                });
+                list = ['Hario V60', 'Kalita Wave', 'Origami', 'Aeropress', 'Orea V3', 'NextLevel Pulsar', 'Hario Switch'];
+                localStorage.setItem('ttara_equipment', JSON.stringify(list));
             }
-            
-            renderCatalog(list);
+
+            tbody.innerHTML = '';
+            list.sort().forEach(eq => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-zinc-800/30 transition-colors">
+                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium text-white">${eq}</td>
+                        <td class="px-4 sm:px-6 py-3 sm:py-4 text-right">
+                            <button class="text-[10px] sm:text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded transition-colors" onclick="deleteEquip('${eq}')">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
         }
 
-        // 전체 카탈로그 렌더링
-        function renderCatalog(activeList) {
-            const container = document.getElementById('catalog-container');
-            const grouped = coffeeToolsData.reduce((acc, item) => {
-                if (!acc[item.category]) acc[item.category] = [];
-                acc[item.category].push(item);
-                return acc;
-            }, {});
-
-            container.innerHTML = '';
-            for (const [category, items] of Object.entries(grouped)) {
-                const sec = document.createElement('div');
-                sec.innerHTML = `<h4 class="text-sm font-bold text-white mb-3 border-l-2 border-indigo-500 pl-2">${category}</h4>`;
-                
-                const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3';
-                
-                items.forEach(item => {
-                    // 영문명과 국문명 중 하나라도 등록되어 있으면 활성화 처리
-                    const isActive = activeList.includes(item.name) || activeList.includes(item.kor);
-                    
-                    const card = document.createElement('div');
-                    card.className = `p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-center gap-1 ${
-                        isActive ? 'bg-indigo-500/20 border-indigo-500/50 opacity-50' : 'bg-zinc-800 border-zinc-700 hover:border-indigo-400 hover:bg-zinc-800/80'
-                    }`;
-                    card.innerHTML = `
-                        <div class="text-xs font-bold text-white line-clamp-1">${item.kor}</div>
-                        <div class="text-[10px] text-zinc-400 line-clamp-1">${item.name}</div>
-                    `;
-                    
-                    if (!isActive) {
-                        card.addEventListener('click', () => addEquip(item.name));
-                    }
-                    grid.appendChild(card);
-                });
-                
-                sec.appendChild(grid);
-                container.appendChild(sec);
-            }
-        }
-
-        // 새 기물 목록에 추가
-        window.addEquip = function(nameStr) {
-            // 인자가 없으면 검색창 값, 있으면 클릭한 카탈로그 값
-            const val = (nameStr || document.getElementById('equip-search-input').value).trim();
+        window.addEquip = function() {
+            const val = document.getElementById('new-equip-input').value.trim();
             if(!val) return;
+            let list = JSON.parse(localStorage.getItem('ttara_equipment') || '[]');
             
-            let list = JSON.parse(localStorage.getItem('buku_equipment') || '[]');
             if(!list.includes(val)) {
                 list.push(val);
-                localStorage.setItem('buku_equipment', JSON.stringify(list));
-                document.getElementById('equip-search-input').value = '';
+                localStorage.setItem('ttara_equipment', JSON.stringify(list));
+                document.getElementById('new-equip-input').value = '';
+                loadEquipments();
+            } else {
+                alert('이미 등록된 기물입니다.');
+            }
+        }
+
+        window.deleteEquip = function(name) {
+            if(confirm(`정말로 '${name}' 기물을 목록에서 삭제하시겠습니까?`)) {
+                let list = JSON.parse(localStorage.getItem('ttara_equipment') || '[]');
+                list = list.filter(e => e !== name);
+                localStorage.setItem('ttara_equipment', JSON.stringify(list));
                 loadEquipments();
             }
         }
 
-        // 기물 삭제
-        window.deleteEquip = function(name) {
-            let list = JSON.parse(localStorage.getItem('buku_equipment') || '[]');
-            list = list.filter(e => e !== name);
-            localStorage.setItem('buku_equipment', JSON.stringify(list));
-            loadEquipments();
-        }
-
-        // 검색창 자동완성 로직
-        const searchInput = document.getElementById('equip-search-input');
-        const autoList = document.getElementById('equip-autocomplete-list');
-
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-            autoList.innerHTML = '';
-            
-            if (!query) {
-                autoList.classList.add('hidden');
-                return;
-            }
-
-            const filtered = coffeeToolsData.filter(item => 
-                item.name.toLowerCase().includes(query) || item.kor.includes(query)
-            );
-
-            if (filtered.length > 0) {
-                filtered.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'px-4 py-3 hover:bg-zinc-700 cursor-pointer border-b border-zinc-700/50 last:border-0 flex flex-col transition-colors';
-                    li.innerHTML = `
-                        <span class="font-bold text-white text-xs">${item.kor}</span>
-                        <span class="text-[10px] text-zinc-400 mt-0.5">${item.name} <span class="text-indigo-400 ml-1">[${item.category}]</span></span>
-                    `;
-                    li.addEventListener('mousedown', () => {
-                        addEquip(item.name); // 영문명으로 추가 (또는 kor로 변경 가능)
-                        searchInput.value = '';
-                        autoList.classList.add('hidden');
-                    });
-                    autoList.appendChild(li);
-                });
-            } else {
-                const li = document.createElement('li');
-                li.className = 'px-4 py-3 text-xs text-zinc-500 italic flex justify-between items-center';
-                li.innerHTML = `목록에 없습니다. <button onmousedown="addEquip()" class="bg-zinc-700 text-white px-2 py-1 rounded">새로 등록</button>`;
-                autoList.appendChild(li);
-            }
-            autoList.classList.remove('hidden');
-        });
-
-        searchInput.addEventListener('blur', () => setTimeout(() => autoList.classList.add('hidden'), 150));
-
-        // 초기 실행
         loadAdminData();
     </script>
 </body>
