@@ -12,6 +12,8 @@
         .popup-panel { display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(39, 39, 42, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(82, 82, 91, 0.5); padding: 12px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); z-index: 50; width: max-content; }
         .popup-panel.active { display: flex; flex-direction: column; gap: 8px; }
         dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); }
+        .recording-pulse { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden relative selection:bg-indigo-500/30">
@@ -86,13 +88,11 @@
                 </button>
             </div>
             
-            <!-- 추출 완료 후 모달창을 닫아도 다시 열 수 있는 복구 버튼 -->
             <button id="btnReopenModal" class="hidden w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3 sm:py-4 flex items-center justify-center gap-2 transition-colors shadow-lg active:bg-emerald-700 font-bold text-xs sm:text-sm">
                 <span>💾</span> 방금 추출한 기록 저장 / 공유하기
             </button>
         </section>
 
-        <!-- STREAMING_CHUNK:Rendering Canvas Area... -->
         <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
             <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 bg-zinc-900/80 backdrop-blur border border-zinc-700 px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
                 <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
@@ -102,7 +102,6 @@
                 <canvas id="brewChart" class="w-full h-full"></canvas>
             </div>
             
-            <!-- 추출 중에만 표시되는 실시간 마커 버튼 -->
             <button id="btnLiveMarker" class="hidden absolute bottom-6 right-6 bg-rose-600/90 hover:bg-rose-500 text-white px-4 py-3 rounded-full text-xs sm:text-sm font-bold transition-all shadow-[0_0_15px_rgba(225,29,72,0.6)] active:scale-95 flex items-center gap-1.5 z-30 backdrop-blur">
                 <span>📍</span> 마커 추가
             </button>
@@ -183,7 +182,6 @@
                     </div>
                 </div>
                 
-                <!-- 누락되어 에러를 냈던 설명 필드 추가 -->
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 의도 (설명)</label>
                     <textarea id="f-desc" rows="2" placeholder="이 레시피가 타겟팅하는 맛이나 주의사항을 적어주세요." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 resize-none"></textarea>
@@ -247,11 +245,6 @@
         const btnAutoMarker = document.getElementById('btnAutoMarker');
         const btnReopenModal = document.getElementById('btnReopenModal');
         const btnLiveMarker = document.getElementById('btnLiveMarker');
-
-        let bluetoothDevice;
-        
-        const postBrewModal = document.getElementById('postBrewModal');
-        const btnAutoMarker = document.getElementById('btnAutoMarker');
 
         let bluetoothDevice;
         let scaleCharacteristic;
@@ -474,32 +467,28 @@
             btnConnect.classList.remove('hidden'); btnDisconnect.classList.add('hidden');
             showToast('저울과 연결이 끊어졌습니다.');
         }
-        // ==========================================
-        // 버튼 및 자동 감지 로직
-        // ==========================================
+
         btnTare.addEventListener('click', () => {
-            if (currentScaleType === 'bookoo') sendBookooTare();
+            if (currentScaleType === 'standard') sendStandardTare();
             else sendAcaiaTare();
             showToast('영점을 맞췄습니다.');
         });
 
         btnReset.addEventListener('click', () => {
-            if (currentScaleType === 'bookoo') sendBookooTimerReset();
+            if (currentScaleType === 'standard') sendStandardTimerReset();
             else sendAcaiaTimerReset();
             showToast('시간을 초기화했습니다.');
             if (isExtracting) toggleRecordState(); 
             displayTime.textContent = "0' 00.0\"";
             
-            // 초기화 시 복구 버튼 숨김
             btnReopenModal.classList.add('hidden');
         });
 
         volSlider.addEventListener('change', (e) => {
             const level = parseInt(e.target.value);
-            sendBookooBeep(level);
+            sendStandardBeep(level);
         });
         
-        // 추출 중 실시간 마커 추가 로직
         btnLiveMarker.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!isExtracting || extractionData.length === 0) return;
@@ -509,7 +498,6 @@
             drawGraph();
         });
 
-        // 닫았던 모달 다시 열기 로직
         btnReopenModal.addEventListener('click', () => {
             if (extractionData.length > 5) {
                 postBrewModal.showModal();
@@ -521,7 +509,6 @@
             isExtracting = !isExtracting;
             if (isExtracting) {
                 extractionData = [];
-                // 레시피가 있다면 레시피의 마커를 유지하고, 아니면 초기화
                 if (!currentRecipe) customMarkers = []; 
                 else customMarkers = [...(currentRecipe.markers || [])];
                 
@@ -537,7 +524,6 @@
                 btnRecord.classList.replace('bg-indigo-600', 'bg-rose-600');
                 btnRecord.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
                 
-                // 추출 시작 시 버튼들 토글
                 btnLiveMarker.classList.remove('hidden');
                 btnReopenModal.classList.add('hidden');
                 
@@ -547,11 +533,9 @@
                 btnRecord.classList.replace('bg-rose-600', 'bg-indigo-600');
                 btnRecord.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
                 
-                // 추출 종료 시 마커 버튼 숨기기
                 btnLiveMarker.classList.add('hidden');
 
                 if (extractionData.length > 5) {
-                    // 기록이 존재하면 저장 복구 버튼 노출
                     btnReopenModal.classList.remove('hidden');
                     
                     setTimeout(() => {
@@ -641,7 +625,6 @@
             if (currentScaleType === 'standard') {
                 if (!isExtracting) displayTime.textContent = formatTime(timeSec);
 
-                // 0.3s glitch filter
                 if (timeSec > 0.3 && lastScaleTime <= 0.3 && !isExtracting) {
                     showToast('⏱️ 저울 타이머 작동 감지: 자동 기록 시작!');
                     toggleRecordState();
@@ -720,7 +703,6 @@
                 currentRecipe.steps.forEach((s, i) => {
                     const x = getX(s.t); const y = getY(s.w);
                     ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-                    // Text overlap prevention
                     if (i > 0 && i < currentRecipe.steps.length - 1) {
                         const dist = Math.sqrt(Math.pow(x - lastDrawPoint.x, 2) + Math.pow(y - lastDrawPoint.y, 2));
                         if (dist > 40) {
@@ -800,18 +782,26 @@
         }
 
         document.getElementById('tab-follower').addEventListener('click', () => {
-            document.getElementById('follower-form').classList.remove('hidden'); document.getElementById('share-form').classList.add('hidden');
-            document.getElementById('tab-follower').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg bg-zinc-600 text-white transition-colors'; document.getElementById('tab-new').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg text-zinc-400 hover:text-white transition-colors';
+            document.getElementById('follower-form').classList.remove('hidden');
+            document.getElementById('share-form').classList.add('hidden');
+            document.getElementById('tab-follower').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg bg-zinc-600 text-white transition-colors';
+            document.getElementById('tab-new').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg text-zinc-400 hover:text-white transition-colors';
         });
         document.getElementById('tab-new').addEventListener('click', () => {
-            document.getElementById('follower-form').classList.add('hidden'); document.getElementById('share-form').classList.remove('hidden');
-            document.getElementById('tab-new').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg bg-zinc-600 text-white transition-colors'; document.getElementById('tab-follower').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg text-zinc-400 hover:text-white transition-colors';
+            document.getElementById('follower-form').classList.add('hidden');
+            document.getElementById('share-form').classList.remove('hidden');
+            document.getElementById('tab-new').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg bg-zinc-600 text-white transition-colors';
+            document.getElementById('tab-follower').className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-lg text-zinc-400 hover:text-white transition-colors';
         });
 
         document.querySelectorAll('.star').forEach(star => {
             star.addEventListener('click', (e) => {
-                const val = parseInt(e.target.dataset.val); document.getElementById('f-follow-rating').value = val;
-                document.querySelectorAll('.star').forEach(s => { if (parseInt(s.dataset.val) <= val) s.classList.replace('text-zinc-600', 'text-yellow-400'); else s.classList.replace('text-yellow-400', 'text-zinc-600'); });
+                const val = parseInt(e.target.dataset.val);
+                document.getElementById('f-follow-rating').value = val;
+                document.querySelectorAll('.star').forEach(s => {
+                    if (parseInt(s.dataset.val) <= val) s.classList.replace('text-zinc-600', 'text-yellow-400');
+                    else s.classList.replace('text-yellow-400', 'text-zinc-600');
+                });
             });
         });
 
@@ -822,62 +812,105 @@
                 let prev = extractionData[i-1].w; let curr = extractionData[i].w; let next = extractionData[i+1].w;
                 if ((curr - prev > threshold && curr - next > threshold) || (prev - curr > threshold && next - curr > threshold)) {
                     customMarkers.push({ t: extractionData[i].t, label: "물 붓기" });
-                    extractionData[i].w = (prev + next) / 2; detected++;
+                    extractionData[i].w = (prev + next) / 2;
+                    detected++;
                 }
             }
             customMarkers = customMarkers.filter((v, i, a) => a.findIndex(v2 => (typeof v2 === 'object' ? v2.t : v2) === (typeof v === 'object' ? v.t : v)) === i);
             customMarkers.sort((a,b) => (typeof a === 'object' ? a.t : a) - (typeof b === 'object' ? b.t : b));
-            drawGraph(); drawPreviewGraph(); showToast(`총 ${detected}개의 물리 버튼 입력을 마커로 변환했습니다!`);
+            drawGraph(); drawPreviewGraph();
+            showToast(`총 ${detected}개의 물리 버튼 입력을 마커로 변환했습니다!`);
         });
 
         pCanvas.addEventListener('click', (e) => {
             if (extractionData.length === 0) return;
-            const rect = pCanvas.getBoundingClientRect(); const x = e.clientX - rect.left; const maxTime = extractionData[extractionData.length - 1].t; const clickedTime = (x / pCanvas.width) * maxTime;
-            const existingIdx = customMarkers.findIndex(m => { const mT = typeof m === 'object' ? m.t : m; return Math.abs(mT - clickedTime) < 2; });
-            if (existingIdx >= 0) { customMarkers.splice(existingIdx, 1); showToast('마커를 삭제했습니다.'); drawPreviewGraph(); } 
-            else { tempMarkerTime = clickedTime; document.getElementById('marker-label-input').value = ''; document.getElementById('markerPromptModal').showModal(); }
+            const rect = pCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const maxTime = extractionData[extractionData.length - 1].t;
+            const clickedTime = (x / pCanvas.width) * maxTime;
+            
+            const existingIdx = customMarkers.findIndex(m => {
+                const mT = typeof m === 'object' ? m.t : m;
+                return Math.abs(mT - clickedTime) < 2;
+            });
+
+            if (existingIdx >= 0) {
+                customMarkers.splice(existingIdx, 1);
+                showToast('마커를 삭제했습니다.');
+                drawPreviewGraph();
+            } else {
+                tempMarkerTime = clickedTime;
+                document.getElementById('marker-label-input').value = '';
+                document.getElementById('markerPromptModal').showModal();
+            }
         });
 
         document.getElementById('btn-marker-cancel').addEventListener('click', () => document.getElementById('markerPromptModal').close());
         document.getElementById('btn-marker-save').addEventListener('click', () => {
             const label = document.getElementById('marker-label-input').value.trim() || '마커';
-            customMarkers.push({ t: tempMarkerTime, label: label }); customMarkers.sort((a,b) => (typeof a === 'object' ? a.t : a) - (typeof b === 'object' ? b.t : b));
-            document.getElementById('markerPromptModal').close(); drawPreviewGraph(); drawGraph(); showToast(`'${label}' 마커를 추가했습니다.`);
+            customMarkers.push({ t: tempMarkerTime, label: label });
+            customMarkers.sort((a,b) => (typeof a === 'object' ? a.t : a) - (typeof b === 'object' ? b.t : b));
+            document.getElementById('markerPromptModal').close();
+            drawPreviewGraph(); drawGraph();
+            showToast(`'${label}' 마커를 추가했습니다.`);
         });
 
         function drawPreviewGraph() {
             pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
             if (extractionData.length === 0) return;
-            const maxTime = extractionData[extractionData.length - 1].t; const maxWeight = Math.max(...extractionData.map(d => d.w)); const w = pCanvas.width; const h = pCanvas.height;
-            const getX = (t) => (t / maxTime) * w; const getY = (wt) => h - (wt / (maxWeight * 1.1)) * h;
+            const maxTime = extractionData[extractionData.length - 1].t;
+            const maxWeight = Math.max(...extractionData.map(d => d.w));
+            const w = pCanvas.width; const h = pCanvas.height;
+            const getX = (t) => (t / maxTime) * w;
+            const getY = (wt) => h - (wt / (maxWeight * 1.1)) * h;
 
             customMarkers.forEach((m, idx) => {
-                const mT = typeof m === 'object' ? m.t : m; const mLabel = typeof m === 'object' ? m.label : `Marker ${idx+1}`; const mx = getX(mT);
-                pCtx.beginPath(); pCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)'; pCtx.lineWidth = 2; pCtx.setLineDash([4, 4]); pCtx.moveTo(mx, 0); pCtx.lineTo(mx, h); pCtx.stroke(); pCtx.setLineDash([]); pCtx.fillStyle = '#f43f5e'; pCtx.font = 'bold 10px Inter'; pCtx.textAlign = 'center'; pCtx.fillText(mLabel, mx, 12);
+                const mT = typeof m === 'object' ? m.t : m;
+                const mLabel = typeof m === 'object' ? m.label : `Marker ${idx+1}`;
+                const mx = getX(mT);
+                pCtx.beginPath(); pCtx.strokeStyle = 'rgba(244, 63, 94, 0.5)'; pCtx.lineWidth = 2; pCtx.setLineDash([4, 4]);
+                pCtx.moveTo(mx, 0); pCtx.lineTo(mx, h); pCtx.stroke(); pCtx.setLineDash([]);
+                pCtx.fillStyle = '#f43f5e'; pCtx.font = 'bold 10px Inter'; pCtx.textAlign = 'center'; pCtx.fillText(mLabel, mx, 12);
             });
 
             pCtx.lineWidth = 3; pCtx.strokeStyle = '#10b981'; pCtx.lineCap = 'round'; pCtx.lineJoin = 'round';
-            pCtx.beginPath(); extractionData.forEach((d, i) => { if (i === 0) pCtx.moveTo(getX(d.t), getY(d.w)); else pCtx.lineTo(getX(d.t), getY(d.w)); }); pCtx.stroke();
+            pCtx.beginPath();
+            extractionData.forEach((d, i) => {
+                if (i === 0) pCtx.moveTo(getX(d.t), getY(d.w)); else pCtx.lineTo(getX(d.t), getY(d.w));
+            });
+            pCtx.stroke();
         }
 
-        // RDP Compression
         function perpendicularDistance(pt, lineStart, lineEnd) {
-            const dx = lineEnd.t - lineStart.t; const dy = lineEnd.w - lineStart.w; const mag = Math.sqrt(dx * dx + dy * dy);
-            if (mag > 0.0) return Math.abs(dx * (lineStart.w - pt.w) - (lineStart.t - pt.t) * dy) / mag; else return Math.abs(pt.w - lineStart.w);
+            const dx = lineEnd.t - lineStart.t; const dy = lineEnd.w - lineStart.w;
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            if (mag > 0.0) return Math.abs(dx * (lineStart.w - pt.w) - (lineStart.t - pt.t) * dy) / mag;
+            else return Math.abs(pt.w - lineStart.w);
         }
 
         function simplifyPath(points, epsilon) {
             if (points.length <= 2) return points;
             let dmax = 0; let index = 0; const end = points.length - 1;
-            for (let i = 1; i < end; i++) { const d = perpendicularDistance(points[i], points[0], points[end]); if (d > dmax) { index = i; dmax = d; } }
-            if (dmax > epsilon) { const recResults1 = simplifyPath(points.slice(0, index + 1), epsilon); const recResults2 = simplifyPath(points.slice(index), epsilon); return recResults1.slice(0, recResults1.length - 1).concat(recResults2); } 
-            else { return [points[0], points[end]]; }
+            for (let i = 1; i < end; i++) {
+                const d = perpendicularDistance(points[i], points[0], points[end]);
+                if (d > dmax) { index = i; dmax = d; }
+            }
+            if (dmax > epsilon) {
+                const recResults1 = simplifyPath(points.slice(0, index + 1), epsilon);
+                const recResults2 = simplifyPath(points.slice(index), epsilon);
+                return recResults1.slice(0, recResults1.length - 1).concat(recResults2);
+            } else { return [points[0], points[end]]; }
         }
 
         function compressToSteps(data) {
             if(data.length === 0) return [];
             let secondsData = []; let lastT = -1;
-            data.forEach(d => { let currentT = Math.round(d.t); if (currentT > lastT) { secondsData.push({ t: currentT, w: Math.round(d.w) }); lastT = currentT; } else if (secondsData.length > 0) { secondsData[secondsData.length - 1].w = Math.round(d.w); } });
+            data.forEach(d => {
+                let currentT = Math.round(d.t);
+                if (currentT > lastT) { secondsData.push({ t: currentT, w: Math.round(d.w) }); lastT = currentT; }
+                else if (secondsData.length > 0) { secondsData[secondsData.length - 1].w = Math.round(d.w); }
+            });
+            
             let simplified = simplifyPath(secondsData, 2.5);
             if(simplified.length > 1 && simplified[simplified.length-1].w <= 0 && simplified[simplified.length-2].w > 0) simplified.pop();
             return simplified.map(s => ({ t: Math.round(s.t), w: Math.round(s.w) }));
@@ -894,7 +927,9 @@
             let rIdx = recipes.findIndex(r => r.id === currentRecipe.id);
             if (rIdx >= 0) {
                 if (!recipes[rIdx].attempts) recipes[rIdx].attempts = [];
-                recipes[rIdx].attempts.unshift({ id: 'att_' + Date.now(), author: author, rating: rating, score: currentFinalScore, date: Date.now(), data: compressedSteps, comments: [] });
+                recipes[rIdx].attempts.unshift({
+                    id: 'att_' + Date.now(), author: author, rating: rating, score: currentFinalScore, date: Date.now(), data: compressedSteps, comments: []             
+                });
                 localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
                 showToast('✅ 이 레시피에 기록을 남겼습니다!');
                 setTimeout(() => { window.location.href = 'index.html'; }, 1500);
@@ -907,11 +942,34 @@
             if (compressedSteps.length < 2) return showToast('데이터가 너무 짧아 저장할 수 없습니다.');
             const temp = Number(document.getElementById('f-temp').value);
             let color = temp >= 90 ? '#ef4444' : temp >= 80 ? '#f97316' : temp >= 70 ? '#eab308' : '#3b82f6';
+            
+            const dripperVal = document.getElementById('f-dripper').value.trim();
+            let list = JSON.parse(localStorage.getItem('ttara_equipment') || '[]');
+            if(!list.includes(dripperVal)) {
+                list.push(dripperVal);
+                localStorage.setItem('ttara_equipment', JSON.stringify(list));
+                showToast(`'${dripperVal}' 기물이 새로 데이터베이스에 등록되었습니다.`);
+            }
+
             const newRecipe = {
-                id: 'id_' + Date.now(), title: document.getElementById('f-title').value, author: document.getElementById('f-author').value, password: document.getElementById('f-pw').value, dripper: document.getElementById('f-dripper').value, origin: document.getElementById('f-origin').value || '블렌드', desc: document.getElementById('f-desc').value, beans: Number(document.getElementById('f-beans').value), temp: temp, steps: compressedSteps, markers: customMarkers, attempts: [], likes: 0, color: color, createdAt: Date.now()
+                id: 'id_' + Date.now(),
+                title: document.getElementById('f-title').value,
+                author: document.getElementById('f-author').value,
+                password: document.getElementById('f-pw').value,
+                dripper: dripperVal,
+                origin: document.getElementById('f-origin').value || '블렌드',
+                desc: document.getElementById('f-desc').value,
+                beans: Number(document.getElementById('f-beans').value),
+                temp: temp,
+                steps: compressedSteps, 
+                markers: customMarkers,
+                attempts: [], likes: 0, color: color, createdAt: Date.now()
             };
-            let recipes = JSON.parse(localStorage.getItem('ttara_recipes') || '[]'); recipes.unshift(newRecipe); localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
-            showToast('✅ 추출 기록이 새 레시피로 공유되었습니다!'); setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+            let recipes = JSON.parse(localStorage.getItem('ttara_recipes') || '[]');
+            recipes.unshift(newRecipe);
+            localStorage.setItem('ttara_recipes', JSON.stringify(recipes));
+            showToast('✅ 추출 기록이 새 레시피로 공유되었습니다!');
+            setTimeout(() => { window.location.href = 'index.html'; }, 1500);
         });
 
         init();
