@@ -85,8 +85,14 @@
                     <span class="text-lg sm:text-xl" id="recordIcon">▶️</span><span class="text-[10px] sm:text-xs font-bold" id="recordText">추출 시작</span>
                 </button>
             </div>
+            
+            <!-- 추출 완료 후 모달창을 닫아도 다시 열 수 있는 복구 버튼 -->
+            <button id="btnReopenModal" class="hidden w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3 sm:py-4 flex items-center justify-center gap-2 transition-colors shadow-lg active:bg-emerald-700 font-bold text-xs sm:text-sm">
+                <span>💾</span> 방금 추출한 기록 저장 / 공유하기
+            </button>
         </section>
 
+        <!-- STREAMING_CHUNK:Rendering Canvas Area... -->
         <section class="flex-1 relative bg-zinc-900/30 flex flex-col min-h-[40vh] lg:min-h-0">
             <div id="scoreOverlay" class="absolute top-4 right-4 sm:top-6 sm:right-6 bg-zinc-900/80 backdrop-blur border border-zinc-700 px-3 sm:px-4 py-1 sm:py-2 rounded-xl flex items-center gap-2 sm:gap-3 z-20 hidden">
                 <span class="text-xs sm:text-sm font-bold text-zinc-400">가이드 일치율</span>
@@ -95,6 +101,11 @@
             <div class="absolute inset-0 p-2 sm:p-4 lg:p-8">
                 <canvas id="brewChart" class="w-full h-full"></canvas>
             </div>
+            
+            <!-- 추출 중에만 표시되는 실시간 마커 버튼 -->
+            <button id="btnLiveMarker" class="hidden absolute bottom-6 right-6 bg-rose-600/90 hover:bg-rose-500 text-white px-4 py-3 rounded-full text-xs sm:text-sm font-bold transition-all shadow-[0_0_15px_rgba(225,29,72,0.6)] active:scale-95 flex items-center gap-1.5 z-30 backdrop-blur">
+                <span>📍</span> 마커 추가
+            </button>
         </section>
     </main>
 
@@ -171,6 +182,13 @@
                         <input type="text" id="f-dripper" placeholder="V60, 칼리타 등" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500" required>
                     </div>
                 </div>
+                
+                <!-- 누락되어 에러를 냈던 설명 필드 추가 -->
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1.5">추출 의도 (설명)</label>
+                    <textarea id="f-desc" rows="2" placeholder="이 레시피가 타겟팅하는 맛이나 주의사항을 적어주세요." class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 resize-none"></textarea>
+                </div>
+                
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-zinc-400 mb-1.5">원두 투입량 (g)</label>
@@ -224,6 +242,13 @@
 
         const scoreOverlay = document.getElementById('scoreOverlay');
         const scoreValue = document.getElementById('scoreValue');
+        
+        const postBrewModal = document.getElementById('postBrewModal');
+        const btnAutoMarker = document.getElementById('btnAutoMarker');
+        const btnReopenModal = document.getElementById('btnReopenModal');
+        const btnLiveMarker = document.getElementById('btnLiveMarker');
+
+        let bluetoothDevice;
         
         const postBrewModal = document.getElementById('postBrewModal');
         const btnAutoMarker = document.getElementById('btnAutoMarker');
@@ -449,30 +474,54 @@
             btnConnect.classList.remove('hidden'); btnDisconnect.classList.add('hidden');
             showToast('저울과 연결이 끊어졌습니다.');
         }
-
+        // ==========================================
+        // 버튼 및 자동 감지 로직
+        // ==========================================
         btnTare.addEventListener('click', () => {
-            if (currentScaleType === 'standard') sendStandardTare();
+            if (currentScaleType === 'bookoo') sendBookooTare();
             else sendAcaiaTare();
             showToast('영점을 맞췄습니다.');
         });
 
         btnReset.addEventListener('click', () => {
-            if (currentScaleType === 'standard') sendStandardTimerReset();
+            if (currentScaleType === 'bookoo') sendBookooTimerReset();
             else sendAcaiaTimerReset();
             showToast('시간을 초기화했습니다.');
             if (isExtracting) toggleRecordState(); 
             displayTime.textContent = "0' 00.0\"";
+            
+            // 초기화 시 복구 버튼 숨김
+            btnReopenModal.classList.add('hidden');
         });
 
         volSlider.addEventListener('change', (e) => {
             const level = parseInt(e.target.value);
-            sendStandardBeep(level);
+            sendBookooBeep(level);
+        });
+        
+        // 추출 중 실시간 마커 추가 로직
+        btnLiveMarker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!isExtracting || extractionData.length === 0) return;
+            const currentT = extractionData[extractionData.length - 1].t;
+            customMarkers.push({ t: currentT, label: `마커 ${customMarkers.length + 1}` });
+            showToast(`📍 ${formatTime(currentT)} 지점에 마커가 기록되었습니다.`);
+            drawGraph();
+        });
+
+        // 닫았던 모달 다시 열기 로직
+        btnReopenModal.addEventListener('click', () => {
+            if (extractionData.length > 5) {
+                postBrewModal.showModal();
+                setTimeout(resizeCanvas, 100);
+            }
         });
 
         function toggleRecordState() {
             isExtracting = !isExtracting;
             if (isExtracting) {
                 extractionData = [];
+                // 레시피가 있다면 레시피의 마커를 유지하고, 아니면 초기화
                 if (!currentRecipe) customMarkers = []; 
                 else customMarkers = [...(currentRecipe.markers || [])];
                 
@@ -487,13 +536,24 @@
                 recordText.textContent = '추출 종료';
                 btnRecord.classList.replace('bg-indigo-600', 'bg-rose-600');
                 btnRecord.classList.replace('hover:bg-indigo-500', 'hover:bg-rose-500');
+                
+                // 추출 시작 시 버튼들 토글
+                btnLiveMarker.classList.remove('hidden');
+                btnReopenModal.classList.add('hidden');
+                
             } else {
                 recordIcon.textContent = '▶️';
                 recordText.textContent = '추출 시작';
                 btnRecord.classList.replace('bg-rose-600', 'bg-indigo-600');
                 btnRecord.classList.replace('hover:bg-rose-500', 'hover:bg-indigo-500');
+                
+                // 추출 종료 시 마커 버튼 숨기기
+                btnLiveMarker.classList.add('hidden');
 
                 if (extractionData.length > 5) {
+                    // 기록이 존재하면 저장 복구 버튼 노출
+                    btnReopenModal.classList.remove('hidden');
+                    
                     setTimeout(() => {
                         if (currentRecipe) {
                             document.getElementById('post-brew-tabs').classList.remove('hidden');
