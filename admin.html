@@ -75,7 +75,7 @@
         </div>
     </div>
 
-    <!-- 삭제 모달 -->
+    <!-- 삭제 비밀번호 확인 모달 -->
     <dialog id="deleteModal" class="bg-zinc-900 text-white rounded-2xl shadow-2xl border border-zinc-700 p-5 sm:p-6 w-[90%] max-w-sm m-auto">
         <h3 class="text-base sm:text-lg font-bold mb-2 text-rose-400">레시피 삭제</h3>
         <p class="text-xs sm:text-sm text-zinc-400 mb-4">해당 레시피를 삭제하려면 작성 시 입력한 비밀번호를 확인해주세요.</p>
@@ -90,6 +90,9 @@
         let currentDeleteId = null;
         let currentDeletePw = null;
 
+        // ==========================================
+        // 1. 레시피 관리 로직
+        // ==========================================
         function loadAdminData() {
             const tbody = document.getElementById('admin-tbody');
             const data = localStorage.getItem('ttara_recipes');
@@ -146,6 +149,9 @@
             loadAdminData();
         });
 
+        // ==========================================
+        // 2. 기물(Equipment) 관리 로직
+        // ==========================================
         function switchTab(tab) {
             const btnRecipes = document.getElementById('tab-btn-recipes');
             const btnEquip = document.getElementById('tab-btn-equip');
@@ -213,6 +219,7 @@
             }
         }
 
+        // 초기 실행
         loadAdminData();
     </script>
 </body>
